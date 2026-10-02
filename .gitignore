@@ -48,9 +48,40 @@ updated osm/
 REVISIONS.md
 TRAINING_*.md
 
+# AI assistant config and instructions (Claude Code). Personal tooling, not
+# part of the project.
+CLAUDE.md
+CLAUDE.local.md
+.claude/
+
+# Validation harness: the Tier 1-3 execution guide, its test scripts, the
+# generated path/expected-value snapshots (which embed absolute local paths),
+# and the virtualenv it runs in. Development-only; results that matter are
+# written to outputs_district/.
+TESTING_TIERS_*.md
+tests/
+validation/
+.venv*/
+venv/
+
+# Python cruft
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Test coverage
+coverage/
+.coverage
+htmlcov/
+
 # Editor / OS cruft
+.vscode/
+.idea/
+*.swp
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Logs
 npm-debug.log*
