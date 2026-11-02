@@ -45,6 +45,13 @@ async function getJson<T>(path: string, cacheBust: string): Promise<T> {
   if (!res.ok) {
     throw new Error(`Failed to load ${path} (HTTP ${res.status})`);
   }
+  // A host with an SPA fallback answers a missing file with index.html and
+  // HTTP 200. Name that case instead of surfacing a raw JSON parse error.
+  if (res.headers.get("content-type")?.includes("text/html")) {
+    throw new Error(
+      `Failed to load ${path} (the server returned a web page, not JSON — the file is probably missing)`,
+    );
+  }
   return (await res.json()) as T;
 }
 
