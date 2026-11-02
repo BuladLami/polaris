@@ -64,6 +64,14 @@ validation/
 .venv*/
 venv/
 
+# Internal testing: the test-case document, the results reports (Markdown and
+# Word) and the screenshots taken as evidence while running them. Reporting
+# material for the manuscript, not part of the app; fixes found by testing are
+# committed as normal source changes.
+POLARIS_InternalTest*.docx
+POLARIS_InternalTest*.md
+test_evidence/
+
 # Python cruft
 __pycache__/
 *.py[cod]
