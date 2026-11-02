@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { CompositeScore, FactorRow } from "@/components/ScoreDisplay";
 import {
+  buildingRadiusOf,
   describeNormalized,
   describeRoadAccessibility,
   formatMetres,
@@ -21,8 +22,8 @@ import {
   HAZARD_LEVEL_TONE,
   ineligibilityReason,
   isShorelineExcluded,
-  SERVICE_FACTOR_HINT,
   SERVICE_FACTOR_LABEL,
+  serviceFactorHints,
   shorelineBufferOf,
   thresholdsOf,
 } from "@/lib/suitability";
@@ -58,6 +59,8 @@ export function SiteDetailsDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const bufferM = shorelineBufferOf(metadata);
+  const buildingRadiusM = buildingRadiusOf(metadata);
+  const hints = serviceFactorHints(buildingRadiusM);
   const thresholds = thresholdsOf(metadata);
 
   return (
@@ -122,8 +125,8 @@ export function SiteDetailsDialog({
                   <FactorRow
                     label={SERVICE_FACTOR_LABEL.building_density}
                     normalized={site.factors_normalized.building_density}
-                    raw={`${site.factors.building_density.toLocaleString()} buildings within 500 m`}
-                    hint={SERVICE_FACTOR_HINT.building_density}
+                    raw={`${site.factors.building_density.toLocaleString()} buildings within ${buildingRadiusM} m`}
+                    hint={hints.building_density}
                     reading={
                       BUILT_UP_READING[
                         describeNormalized(
@@ -136,7 +139,7 @@ export function SiteDetailsDialog({
                     label={SERVICE_FACTOR_LABEL.road_accessibility}
                     normalized={site.factors_normalized.road_accessibility}
                     raw={formatMetres(site.factors.road_distance_m)}
-                    hint={SERVICE_FACTOR_HINT.road_accessibility}
+                    hint={hints.road_accessibility}
                     reading={describeRoadAccessibility(
                       site.factors_normalized.road_accessibility,
                       site.factors.road_distance_m,
@@ -146,7 +149,7 @@ export function SiteDetailsDialog({
                     label={SERVICE_FACTOR_LABEL.facility_distance}
                     normalized={site.factors_normalized.facility_distance}
                     raw={formatMetres(site.factors.facility_distance_m)}
-                    hint={SERVICE_FACTOR_HINT.facility_distance}
+                    hint={hints.facility_distance}
                     reading={
                       FACILITY_GAP_READING[
                         describeNormalized(

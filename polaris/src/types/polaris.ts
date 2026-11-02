@@ -28,7 +28,10 @@ export type ServiceFactorKey =
 export type HazardLevel = 0 | 1 | 2 | 3;
 
 export interface SiteFactors {
-  /** OSM building footprint count within 500 m — the population proxy. */
+  /**
+   * OSM building footprint count within `metadata.building_density_radius_m`
+   * of the site — the population proxy.
+   */
   building_density: number;
   /** Metres to the nearest OSM road-network node. */
   road_distance_m: number;
@@ -102,6 +105,8 @@ export interface DatasetMetadata {
     hazard_penalty: Record<HazardKey, number>;
   };
   shoreline_buffer_m: number;
+  /** Radius the pipeline counted buildings within for `building_density`. */
+  building_density_radius_m?: number;
   top_n_recommendations: number;
   dataset_clarification: DatasetClarification;
   advisory_note: string;

@@ -24,7 +24,13 @@ export const DEFAULT_THRESHOLDS: Thresholds = { tau1: 0.25, tau2: 0.4, tau3: 0.6
 export const DEFAULT_SHORELINE_BUFFER_M = 50;
 
 /**
- * The two metadata fallbacks, in one place.
+ * The pipeline's building-count radius (`weights_manifest.json`). Used only
+ * when the dataset does not declare `building_density_radius_m` itself.
+ */
+export const DEFAULT_BUILDING_DENSITY_RADIUS_M = 300;
+
+/**
+ * The metadata fallbacks, in one place.
  *
  * Every view that renders a score needs both, and `metadata` is null until the
  * dataset lands — so before these existed the same `?? DEFAULT_THRESHOLDS` and
@@ -37,6 +43,10 @@ export function thresholdsOf(metadata: DatasetMetadata | null): Thresholds {
 
 export function shorelineBufferOf(metadata: DatasetMetadata | null): number {
   return metadata?.shoreline_buffer_m ?? DEFAULT_SHORELINE_BUFFER_M;
+}
+
+export function buildingRadiusOf(metadata: DatasetMetadata | null): number {
+  return metadata?.building_density_radius_m ?? DEFAULT_BUILDING_DENSITY_RADIUS_M;
 }
 
 export const SUITABILITY_CLASSES: SuitabilityClass[] = [
@@ -136,14 +146,20 @@ export const SERVICE_FACTOR_LABEL: Record<ServiceFactorKey, string> = {
   facility_distance: "Distance from existing facilities",
 };
 
-export const SERVICE_FACTOR_HINT: Record<ServiceFactorKey, string> = {
-  building_density:
-    "How many buildings there are within 500 m of the site. More buildings usually means more people living nearby, so a facility here would serve more residents.",
+/**
+ * Factor hints. A function of the building-count radius rather than a
+ * constant, so the hint can never state a different radius from the one the
+ * pipeline actually counted within (and that the interpretation text quotes).
+ */
+export const serviceFactorHints = (
+  buildingRadiusM: number,
+): Record<ServiceFactorKey, string> => ({
+  building_density: `How many buildings there are within ${buildingRadiusM} m of the site. More buildings usually means more people living nearby, so a facility here would serve more residents.`,
   road_accessibility:
     "How close the site is to a road. A value near 1 means it sits right beside a road and is easy to reach. A value near 0 means it is far from any road and hard to reach.",
   facility_distance:
     "How far the site is from the nearest health facility that already exists. The farther away, the less served that area is today — so a new facility there would help more people.",
-};
+});
 
 export const HAZARD_LABEL: Record<HazardKey, string> = {
   flood_susceptibility: "Flood risk",
