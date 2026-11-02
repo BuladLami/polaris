@@ -33,16 +33,25 @@ export function RecommendationsPanel({
   }
 
   if (results.length === 0) {
+    // Two different reasons for an empty list: nothing inside the radius at
+    // all, or sites inside it that were all ruled out. Only the second has an
+    // exclusion breakdown worth showing.
+    const noneInside = summary.inRadius === 0;
+    const siteCount = `${summary.inRadius.toLocaleString()} site${
+      summary.inRadius === 1 ? "" : "s"
+    }`;
     return (
       <div className="space-y-3">
         <EmptyState
           icon={<SearchX className="size-5" />}
           title="No usable sites in this area"
-          body={`${summary.inRadius.toLocaleString()} site${
-            summary.inRadius === 1 ? "" : "s"
-          } fall inside the ${formatMetres(radiusM)} radius, but every one is ruled out — either too close to the shoreline or too hazardous. Try a larger radius or a different search centre.`}
+          body={
+            noneInside
+              ? `0 sites fall inside the ${formatMetres(radiusM)} radius — the radius is too small to reach any scored site. Try a larger radius or a different search centre.`
+              : `${siteCount} fall${summary.inRadius === 1 ? "s" : ""} inside the ${formatMetres(radiusM)} radius, but every one is ruled out — either too close to the shoreline or too hazardous. Try a larger radius or a different search centre.`
+          }
         />
-        <ExclusionSummary summary={summary} />
+        {!noneInside && <ExclusionSummary summary={summary} />}
       </div>
     );
   }
