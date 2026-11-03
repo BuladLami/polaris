@@ -2,6 +2,7 @@ import type {
   DatasetMetadata,
   HazardKey,
   HazardLevel,
+  RankBand,
   ServiceFactorKey,
   Site,
   SuitabilityClass,
@@ -156,7 +157,7 @@ export const serviceFactorHints = (
 ): Record<ServiceFactorKey, string> => ({
   building_density: `How many buildings there are within ${buildingRadiusM} m of the site. More buildings usually means more people living nearby, so a facility here would serve more residents.`,
   road_accessibility:
-    "How close the site is to a road. A value near 1 means it sits right beside a road and is easy to reach. A value near 0 means it is far from any road and hard to reach.",
+    "How close the site is to a road. A value near 1 means it sits right beside a road and is easy to reach. The number falls quickly with distance, so the sentence under it says how the site compares with the rest of the district.",
   facility_distance:
     "How far the site is from the nearest health facility that already exists. The farther away, the less served that area is today — so a new facility there would help more people.",
 });
@@ -196,19 +197,40 @@ export const HAZARD_LEVEL_TONE: Record<HazardLevel, string> = {
 /*  Panel revision #7 — reading a near-zero road-accessibility value   */
 /* ------------------------------------------------------------------ */
 
+/** Matches the four road sentences the pipeline writes from the same bands. */
+const ROAD_BAND_READING: Record<RankBand, string> = {
+  top_quartile:
+    "The site is closer to a road than most of the district, so it would be EASY to reach.",
+  upper_middle:
+    "The site is reasonably close to a road, so it is fairly easy to reach.",
+  lower_middle:
+    "The site is farther from a road than most of the district, so road access is weak.",
+  bottom_quartile:
+    "This is one of the FARTHEST sites from any road in the district, so it would be HARD to reach.",
+};
+
 /**
- * Turns a normalized road-accessibility value into a sentence a non-technical
- * reader can act on. The panel specifically asked that a value such as 0.007
- * never be left to interpretation.
+ * Turns a road-accessibility value into a sentence a non-technical reader can
+ * act on. The panel specifically asked that a value such as 0.007 never be left
+ * to interpretation.
+ *
+ * `band` is the site's rank in the district, which is what the interpretation
+ * text is written from. Without one (the migrated dataset carries none) the
+ * sentence falls back to the size of the number alone.
  */
 export function describeRoadAccessibility(
   normalized: number,
   roadDistanceM?: number,
+  band?: RankBand,
 ): string {
   const distance =
     roadDistanceM === undefined
       ? ""
       : ` The nearest road is about ${formatMetres(roadDistanceM)} away.`;
+
+  if (band) {
+    return `Rated ${normalized.toFixed(3)}. ${ROAD_BAND_READING[band]}${distance}`;
+  }
 
   if (normalized <= 0.05) {
     return (
@@ -232,13 +254,6 @@ export function describeRoadAccessibility(
     `${normalized.toFixed(3)} is close to 1, so the site sits right on or beside a ` +
     `road — it would be EASY to reach.${distance}`
   );
-}
-
-/** Generic 0–1 reading used for the other service factors. */
-export function describeNormalized(value: number): "Low" | "Moderate" | "High" {
-  if (value <= 0.33) return "Low";
-  if (value < 0.66) return "Moderate";
-  return "High";
 }
 
 /* ------------------------------------------------------------------ */

@@ -13,7 +13,6 @@ import { Separator } from "@/components/ui/separator";
 import { CompositeScore, FactorRow } from "@/components/ScoreDisplay";
 import {
   buildingRadiusOf,
-  describeNormalized,
   describeRoadAccessibility,
   formatMetres,
   HAZARD_KEYS,
@@ -27,25 +26,39 @@ import {
   shorelineBufferOf,
   thresholdsOf,
 } from "@/lib/suitability";
-import type { DatasetMetadata, Site } from "@/types/polaris";
+import type { DatasetMetadata, RankBand, Site } from "@/types/polaris";
 
-/** Plain readings for the two factors whose sentence depends on the band. */
-const BUILT_UP_READING: Record<ReturnType<typeof describeNormalized>, string> = {
-  Low: "Fewer buildings here than in most of the district, so there are probably fewer residents nearby to serve.",
-  Moderate:
-    "About as many buildings here as in the rest of the district, so the number of residents nearby is around average.",
-  High: "More buildings here than in most of the district, so there are likely many residents nearby to serve.",
+/**
+ * Plain readings of the site's rank in the district. Both compare the site with
+ * the other scored sites, which is what the band measures, and the pipeline
+ * writes the interpretation from the same bands.
+ */
+const BUILT_UP_READING: Record<RankBand, string> = {
+  top_quartile:
+    "More buildings here than at most sites in the district, so there are likely many residents nearby to serve.",
+  upper_middle:
+    "More buildings here than at the typical site, though not among the busiest quarter of the district.",
+  lower_middle:
+    "Fewer buildings here than at the typical site, so there are probably fewer residents nearby to serve.",
+  bottom_quartile:
+    "Among the fewest buildings in the district, so there are probably few residents nearby to serve.",
 };
 
-const FACILITY_GAP_READING: Record<
-  ReturnType<typeof describeNormalized>,
-  string
-> = {
-  Low: "There is already a health facility close by, so a new one here would add less.",
-  Moderate:
-    "The nearest health facility is a moderate distance away, so this area is only partly served.",
-  High: "The nearest health facility is far away, so this area is poorly served today and would gain the most from a new one.",
+const FACILITY_GAP_READING: Record<RankBand, string> = {
+  top_quartile: "Farther from an existing health facility than most sites in the district.",
+  upper_middle: "Farther from an existing health facility than the typical site.",
+  lower_middle: "Closer to an existing health facility than the typical site.",
+  bottom_quartile:
+    "Closer to an existing health facility than most sites in the district, so a new one here would add less.",
 };
+
+const UNDERSERVED_READING =
+  "At 1 km or more from the nearest one, this area counts as underserved.";
+
+function facilityReading(rank: NonNullable<Site["rank_bands"]>["facility_distance"]) {
+  const reading = FACILITY_GAP_READING[rank.band];
+  return rank.underserved ? `${reading} ${UNDERSERVED_READING}` : reading;
+}
 
 export function SiteDetailsDialog({
   site,
@@ -62,6 +75,7 @@ export function SiteDetailsDialog({
   const buildingRadiusM = buildingRadiusOf(metadata);
   const hints = serviceFactorHints(buildingRadiusM);
   const thresholds = thresholdsOf(metadata);
+  const ranks = site?.rank_bands;
 
   return (
     <Dialog open={site !== null} onOpenChange={onOpenChange}>
@@ -128,11 +142,7 @@ export function SiteDetailsDialog({
                     raw={`${site.factors.building_density.toLocaleString()} buildings within ${buildingRadiusM} m`}
                     hint={hints.building_density}
                     reading={
-                      BUILT_UP_READING[
-                        describeNormalized(
-                          site.factors_normalized.building_density,
-                        )
-                      ]
+                      ranks && BUILT_UP_READING[ranks.building_density.band]
                     }
                   />
                   <FactorRow
@@ -143,6 +153,7 @@ export function SiteDetailsDialog({
                     reading={describeRoadAccessibility(
                       site.factors_normalized.road_accessibility,
                       site.factors.road_distance_m,
+                      ranks?.road_accessibility.band,
                     )}
                   />
                   <FactorRow
@@ -150,13 +161,7 @@ export function SiteDetailsDialog({
                     normalized={site.factors_normalized.facility_distance}
                     raw={formatMetres(site.factors.facility_distance_m)}
                     hint={hints.facility_distance}
-                    reading={
-                      FACILITY_GAP_READING[
-                        describeNormalized(
-                          site.factors_normalized.facility_distance,
-                        )
-                      ]
-                    }
+                    reading={ranks && facilityReading(ranks.facility_distance)}
                   />
                 </div>
               </section>
