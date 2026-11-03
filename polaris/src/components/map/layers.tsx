@@ -94,10 +94,15 @@ export function BoundaryLayer({
 /*  50 m shoreline exclusion buffer (panel revision #2)                */
 /* ================================================================== */
 
+/** Minimum on-screen width of the band, so it stays legible at district zoom. */
+const SHORELINE_BAND_MIN_PX = 9;
+
 /**
- * Draws the shoreline setback as a band whose on-screen width tracks a true
- * `bufferM` metres on either side of the OSM coastline, so the constraint is
- * literally visible at every zoom level rather than merely asserted.
+ * Draws the shoreline setback as a band `bufferM` metres to each side of the OSM
+ * coastline, so the constraint is visible rather than merely asserted. The width
+ * is true to scale from about zoom 12.8 and held at the floor below that. The
+ * exclusion itself is always exact: it comes from the site's measured distance,
+ * never from what is drawn.
  */
 export function ShorelineBufferLayer({
   data,
@@ -124,7 +129,11 @@ export function ShorelineBufferLayer({
         paint: {
           "line-color": bandColor,
           // Doubled: the setback extends bufferM to *each* side of the line.
-          "line-width": metresToPixelsExpression(bufferM * 2, REF_LAT),
+          "line-width": metresToPixelsExpression(
+            bufferM * 2,
+            REF_LAT,
+            SHORELINE_BAND_MIN_PX,
+          ),
           "line-opacity": 0.22,
         },
       },

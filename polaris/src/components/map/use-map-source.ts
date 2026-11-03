@@ -129,30 +129,67 @@ export function useMapSource(
   }, [map, isLoaded, layers]);
 }
 
+/** Web Mercator ground resolution at the equator, zoom 0, for 512 px tiles. */
+const METRES_PER_PIXEL_AT_ZOOM_0 = 78271.5;
+
 /**
  * Pixel width of a fixed ground distance, as a MapLibre zoom expression.
  *
- * Web Mercator resolution is `156543.03 * cos(lat) / 2^zoom` metres per pixel,
- * so pixel width is proportional to `2^zoom`. An exponential-base-2
- * interpolation reproduces that exactly rather than approximating it, which is
- * what lets the 50 m shoreline buffer stay a true 50 m at every zoom level.
+ * MapLibre tiles are 512 px, so Web Mercator resolution is
+ * `78271.5 * cos(lat) / 2^zoom` metres per pixel and pixel width is proportional
+ * to `2^zoom`. An exponential-base-2 interpolation reproduces that exactly rather
+ * than approximating it.
+ *
+ * `minPixels` applies the standard cartographic minimum-width convention: a
+ * 100 m band is about 5 px at the zoom where the whole district is in view, which
+ * is easy to miss. Below the zoom at which true scale reaches `minPixels` the
+ * band is held at that floor; at and above it the width is exact.
+ *
+ * A `zoom` interpolation must be the outermost expression in MapLibre, so the
+ * floor cannot be applied by wrapping this in `max`. It is baked in as a flat
+ * leading segment instead: interpolating between two equal stops yields that
+ * constant, so `[8 → floor, z0 → floor, 22 → exact]` is flat up to `z0` and
+ * exactly `a·2^z` beyond it.
  */
 export function metresToPixelsExpression(
   metres: number,
   latitude: number,
+  minPixels = 0,
 ): MapLibreGL.ExpressionSpecification {
-  // metresPerPixel = 156543.03392 * cos(lat) / 2^zoom, so
-  // pixels = metres * 2^zoom / (156543.03392 * cos(lat)).
+  // metresPerPixel = 78271.5 * cos(lat) / 2^zoom, so
+  // pixels = metres * 2^zoom / (78271.5 * cos(lat)).
   const perZoomUnit =
-    metres / (156543.03392 * Math.cos((latitude * Math.PI) / 180));
+    metres / (METRES_PER_PIXEL_AT_ZOOM_0 * Math.cos((latitude * Math.PI) / 180));
+
+  const widthAt = (zoom: number) => perZoomUnit * 2 ** zoom;
+  const MIN_ZOOM = 8;
+  const MAX_ZOOM = 22;
+
+  // Zoom at which the true-scale width first reaches the requested floor.
+  const floorZoom =
+    minPixels > 0 ? Math.log2(minPixels / perZoomUnit) : Number.NEGATIVE_INFINITY;
+
+  if (floorZoom <= MIN_ZOOM) {
+    return [
+      "interpolate",
+      ["exponential", 2],
+      ["zoom"],
+      MIN_ZOOM,
+      widthAt(MIN_ZOOM),
+      MAX_ZOOM,
+      widthAt(MAX_ZOOM),
+    ] as MapLibreGL.ExpressionSpecification;
+  }
 
   return [
     "interpolate",
     ["exponential", 2],
     ["zoom"],
-    8,
-    perZoomUnit * 2 ** 8,
-    22,
-    perZoomUnit * 2 ** 22,
+    MIN_ZOOM,
+    minPixels,
+    floorZoom,
+    minPixels,
+    MAX_ZOOM,
+    widthAt(MAX_ZOOM),
   ] as MapLibreGL.ExpressionSpecification;
 }
