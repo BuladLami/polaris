@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/map";
 import {
   BoundaryLayer,
+  DistrictView,
   FacilitiesLayer,
   FacilityHover,
   MapInteractions,
@@ -23,11 +24,12 @@ import {
   sitesToFeatureCollection,
 } from "@/components/map/layers";
 import type { Theme } from "@/hooks/use-theme";
+import type { LngLatBounds } from "@/lib/geo";
 import { cn } from "@/lib/utils";
 import { formatScore } from "@/lib/suitability";
 import type { AppMode, RankedSite, Site, TopRecommendation } from "@/types/polaris";
 
-/** Opening view of the district — also where "Clear search" returns to. */
+/** Where the map starts before it frames the district on load. */
 export const TALOMO_CENTRE: [number, number] = [125.5439, 7.0511];
 export const DEFAULT_ZOOM = 12.2;
 
@@ -38,6 +40,7 @@ export interface SuitabilityMapProps {
   sites: readonly Site[];
   resultSites: readonly RankedSite[];
   topRecommendations: readonly TopRecommendation[];
+  districtBounds: LngLatBounds | null;
   boundary: FeatureCollection | null;
   coastline: FeatureCollection | null;
   facilities: FeatureCollection | null;
@@ -60,6 +63,7 @@ export function SuitabilityMap({
   sites,
   resultSites,
   topRecommendations,
+  districtBounds,
   boundary,
   coastline,
   facilities,
@@ -117,6 +121,7 @@ export function SuitabilityMap({
       maxZoom={18}
       attributionControl={{ compact: true }}
     >
+      <DistrictView bounds={districtBounds} />
       <MapInteractions
         pickLayers={pickLayers}
         onSelectSite={onSelectSite}

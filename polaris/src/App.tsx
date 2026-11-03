@@ -10,11 +10,7 @@ import { ScoreGuideDialog } from "@/components/ScoreGuideDialog";
 import { SearchPanel } from "@/components/SearchPanel";
 import { SiteDetailsDialog } from "@/components/SiteDetailsDialog";
 import { FatalError, Splash } from "@/components/StatusScreens";
-import {
-  DEFAULT_ZOOM,
-  SuitabilityMap,
-  TALOMO_CENTRE,
-} from "@/components/SuitabilityMap";
+import { SuitabilityMap } from "@/components/SuitabilityMap";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -23,7 +19,8 @@ import { usePolarisData } from "@/hooks/use-polaris-data";
 import { useRecommendationSearch } from "@/hooks/use-recommendation-search";
 import { useSiteEvaluation } from "@/hooks/use-site-evaluation";
 import { useTheme } from "@/hooks/use-theme";
-import { boundsOfSites } from "@/lib/geo";
+import { boundsOfFeatures, boundsOfSites } from "@/lib/geo";
+import { districtPadding } from "@/lib/map-view";
 import {
   MAX_RADIUS_M,
   MAX_TOP_N,
@@ -71,6 +68,11 @@ export default function App() {
   const sites = useMemo(() => bundle?.dataset.sites ?? [], [bundle]);
   const bufferM = shorelineBufferOf(metadata);
   const bounds = useMemo(() => boundsOfSites(sites), [sites]);
+  /** The boundary reaches past the outermost scored sites, so it frames the view. */
+  const districtBounds = useMemo(
+    () => boundsOfFeatures(bundle?.boundary) ?? bounds,
+    [bundle, bounds],
+  );
 
   const siteIndex = useMemo(
     () => new Map(sites.map((s) => [s.site_id, s])),
@@ -95,6 +97,22 @@ export default function App() {
       essential: true,
     });
   }, []);
+
+  const showDistrict = useCallback(() => {
+    const map = mapRef.current;
+    if (!map || !districtBounds) return;
+    map.fitBounds(
+      [
+        [districtBounds.west, districtBounds.south],
+        [districtBounds.east, districtBounds.north],
+      ],
+      {
+        padding: districtPadding(map.getContainer().clientWidth),
+        duration: 900,
+        essential: true,
+      },
+    );
+  }, [districtBounds]);
 
   /* ---- Mode state (independent, so switching loses nothing) ---------- */
   const search = useRecommendationSearch({
@@ -163,8 +181,8 @@ export default function App() {
   const handleClear = useCallback(() => {
     clearActiveMode();
     setSelectedSiteId(null);
-    flyTo(TALOMO_CENTRE[1], TALOMO_CENTRE[0], DEFAULT_ZOOM);
-  }, [clearActiveMode, flyTo]);
+    showDistrict();
+  }, [clearActiveMode, showDistrict]);
 
   /**
    * The header brand acts as a home link, so it returns a genuinely clean slate
@@ -179,8 +197,8 @@ export default function App() {
     clearEvaluation();
     setSelectedSiteId(null);
     setShowWelcome(true);
-    flyTo(TALOMO_CENTRE[1], TALOMO_CENTRE[0], DEFAULT_ZOOM);
-  }, [clearSearch, clearEvaluation, flyTo]);
+    showDistrict();
+  }, [clearSearch, clearEvaluation, showDistrict]);
 
   /* ---- Mode switching ------------------------------------------------ */
 
@@ -207,8 +225,8 @@ export default function App() {
     setSelectedSiteId(null);
     setMode(pendingMode);
     setPendingMode(null);
-    flyTo(TALOMO_CENTRE[1], TALOMO_CENTRE[0], DEFAULT_ZOOM);
-  }, [pendingMode, clearActiveMode, flyTo]);
+    showDistrict();
+  }, [pendingMode, clearActiveMode, showDistrict]);
 
   const modeChangeConsequences = isRecommendation
     ? [
@@ -273,6 +291,7 @@ export default function App() {
               sites={sites}
               resultSites={search.results}
               topRecommendations={mapRecommendations}
+              districtBounds={districtBounds}
               boundary={bundle.boundary}
               coastline={bundle.coastline}
               facilities={bundle.facilities}

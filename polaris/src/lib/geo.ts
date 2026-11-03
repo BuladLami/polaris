@@ -80,6 +80,39 @@ export function boundsOfSites(sites: readonly Site[]): LngLatBounds | null {
   return { west, south, east, north };
 }
 
+/** Extent of every coordinate in a feature collection, or null if it has none. */
+export function boundsOfFeatures(
+  collection: GeoJSON.FeatureCollection | null | undefined,
+): LngLatBounds | null {
+  let bounds: LngLatBounds | null = null;
+
+  const visit = (value: unknown): void => {
+    if (!Array.isArray(value)) return;
+    if (typeof value[0] === "number") {
+      const [lon, lat] = value as number[];
+      bounds = bounds
+        ? {
+            west: Math.min(bounds.west, lon),
+            south: Math.min(bounds.south, lat),
+            east: Math.max(bounds.east, lon),
+            north: Math.max(bounds.north, lat),
+          }
+        : { west: lon, south: lat, east: lon, north: lat };
+      return;
+    }
+    value.forEach(visit);
+  };
+
+  const walk = (geometry: GeoJSON.Geometry | null): void => {
+    if (!geometry) return;
+    if (geometry.type === "GeometryCollection") geometry.geometries.forEach(walk);
+    else visit(geometry.coordinates);
+  };
+
+  collection?.features.forEach((feature) => walk(feature.geometry));
+  return bounds;
+}
+
 export function isInsideBounds(
   lat: number,
   lon: number,

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type MapLibreGL from "maplibre-gl";
 import { Popup } from "maplibre-gl";
 import type { Feature, FeatureCollection, Point, Polygon } from "geojson";
@@ -9,6 +9,8 @@ import {
   useMapSource,
 } from "@/components/map/use-map-source";
 import type { Theme } from "@/hooks/use-theme";
+import type { LngLatBounds } from "@/lib/geo";
+import { districtPadding } from "@/lib/map-view";
 import type { AppMode, Site, SuitabilityClass } from "@/types/polaris";
 import {
   CLASS_HEX,
@@ -32,6 +34,26 @@ const CLASS_INDEX: Record<SuitabilityClass, number> = {
 /* ================================================================== */
 /*  District boundary                                                  */
 /* ================================================================== */
+
+/** Frames the whole district once, as soon as the map can be moved. */
+export function DistrictView({ bounds }: { bounds: LngLatBounds | null }) {
+  const { map, isLoaded } = useMap();
+  const framed = useRef(false);
+
+  useEffect(() => {
+    if (!map || !isLoaded || !bounds || framed.current) return;
+    framed.current = true;
+    map.fitBounds(
+      [
+        [bounds.west, bounds.south],
+        [bounds.east, bounds.north],
+      ],
+      { padding: districtPadding(map.getContainer().clientWidth), duration: 0 },
+    );
+  }, [map, isLoaded, bounds]);
+
+  return null;
+}
 
 export function BoundaryLayer({
   data,
