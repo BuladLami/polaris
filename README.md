@@ -6,6 +6,8 @@ A GIS decision-support prototype for health-facility siting in **Talomo District
 
 University of the Immaculate Conception — College of Computer Studies.
 
+**Live application:** https://polaris-thesis.vercel.app
+
 ---
 
 ## What it does
