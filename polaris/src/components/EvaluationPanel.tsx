@@ -1,7 +1,7 @@
 import { ChevronRight, Crosshair, Info, TriangleAlert } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { CompositeScore } from "@/components/ScoreDisplay";
+import { CompositeScore, RecommendationLevel } from "@/components/ScoreDisplay";
 import { EmptyState } from "@/components/RecommendationsPanel";
 import {
   formatMetres,
@@ -62,6 +62,11 @@ export function EvaluationPanel({
         score={site.score}
         suitabilityClass={site.suitability_class}
         thresholds={thresholds}
+      />
+
+      <RecommendationLevel
+        level={site.recommendation_level}
+        label={site.recommendation_label}
       />
 
       <section className="bg-muted/50 rounded-lg border p-3">

@@ -118,6 +118,28 @@ export function CompositeScore({
 
 /* ------------------------------------------------------------------ */
 
+/** The dataset's five-level recommendation, shown beside the score and class. */
+export function RecommendationLevel({
+  level,
+  label,
+  className,
+}: {
+  level: number;
+  label?: string;
+  className?: string;
+}) {
+  return (
+    <p className={cn("text-xs leading-relaxed", className)}>
+      <span className="text-muted-foreground">Recommendation level:</span>{" "}
+      <span className="font-semibold">
+        {level} of 4{label ? ` · ${label}` : ""}
+      </span>
+    </p>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
 /** A labelled 0–1 factor value with its plain-language reading. */
 export function FactorRow({
   label,

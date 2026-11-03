@@ -2,7 +2,7 @@ import { Ban, ChevronRight, MapPinned, SearchX, Trophy, Waves } from "lucide-rea
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { SuitabilityBadge } from "@/components/ScoreDisplay";
+import { RecommendationLevel, SuitabilityBadge } from "@/components/ScoreDisplay";
 import { formatMetres, formatScore } from "@/lib/suitability";
 import { cn } from "@/lib/utils";
 import type { RankedSite, RecommendationSummary } from "@/types/polaris";
@@ -139,6 +139,11 @@ function RecommendationCard({
           </div>
 
           <SuitabilityBadge suitabilityClass={site.suitability_class} />
+
+          <RecommendationLevel
+            level={site.recommendation_level}
+            label={site.recommendation_label}
+          />
 
           <p className="text-muted-foreground line-clamp-3 text-xs leading-relaxed">
             {site.interpretation}

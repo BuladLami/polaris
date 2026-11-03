@@ -10,7 +10,11 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CompositeScore, FactorRow } from "@/components/ScoreDisplay";
+import {
+  CompositeScore,
+  FactorRow,
+  RecommendationLevel,
+} from "@/components/ScoreDisplay";
 import {
   buildingRadiusOf,
   describeRoadAccessibility,
@@ -109,6 +113,12 @@ export function SiteDetailsDialog({
                 suitabilityClass={site.suitability_class}
                 thresholds={thresholds}
                 size="lg"
+              />
+
+              <RecommendationLevel
+                level={site.recommendation_level}
+                label={site.recommendation_label}
+                className="text-sm"
               />
 
               {/* -- Panel revision #3: textual interpretation -- */}
