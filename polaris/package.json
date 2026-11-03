@@ -12,7 +12,7 @@
     "typecheck": "tsc -b --noEmit",
     "data:geo": "node scripts/fetch-geodata.mjs",
     "data:migrate": "node scripts/migrate-sites.mjs",
-    "data:build": "npm run data:geo && npm run data:migrate"
+    "data:build": "npm run data:geo"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

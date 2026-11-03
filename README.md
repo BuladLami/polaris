@@ -102,7 +102,7 @@ surfaces this as a *Provisional dataset* badge under **Model and dataset**.
 Replace the file as above for final results.
 
 ```bash
-npm run data:build   # geometry + migration in one step
+npm run data:build   # refetch the map geometry only; never touches the scored dataset
 ```
 
 ## Reading a score
