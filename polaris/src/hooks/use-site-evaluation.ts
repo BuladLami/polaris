@@ -74,7 +74,8 @@ export function useSiteEvaluation({ sites, bounds }: SiteEvaluationOptions) {
 
   /** Re-runs against whatever is currently typed in the coordinate fields. */
   const run = useCallback(() => {
-    evaluateAt(Number.parseFloat(latitude), Number.parseFloat(longitude));
+    const typed = parseCoordinates(latitude, longitude);
+    evaluateAt(typed?.lat ?? Number.NaN, typed?.lon ?? Number.NaN);
   }, [evaluateAt, latitude, longitude]);
 
   const clear = useCallback(() => {

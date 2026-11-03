@@ -63,14 +63,21 @@ export function parseShortlistSize(input: string): ShortlistSize {
   return { valid, value: valid ? parsed : DEFAULT_TOP_N };
 }
 
-/** A latitude/longitude pair, or null while either field is unusable. */
+/** Optional sign, digits, at most one decimal point, and nothing else. */
+const DECIMAL_DEGREES = /^[+-]?(\d+\.?\d*|\.\d+)$/;
+
+/**
+ * A latitude/longitude pair, or null while either field is unusable. The whole
+ * field is checked first: `parseFloat` alone stops at the first bad character,
+ * so "7.0730abc" would quietly become 7.073.
+ */
 export function parseCoordinates(
   latitude: string,
   longitude: string,
 ): { lat: number; lon: number } | null {
-  const lat = Number.parseFloat(latitude);
-  const lon = Number.parseFloat(longitude);
-  return Number.isFinite(lat) && Number.isFinite(lon) ? { lat, lon } : null;
+  const [lat, lon] = [latitude.trim(), longitude.trim()];
+  if (!DECIMAL_DEGREES.test(lat) || !DECIMAL_DEGREES.test(lon)) return null;
+  return { lat: Number.parseFloat(lat), lon: Number.parseFloat(lon) };
 }
 
 /* ------------------------------------------------------------------ */
