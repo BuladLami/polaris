@@ -32,6 +32,12 @@ const clearOfKey = (mapWidth: number): MapPadding => ({
       : EDGE_PX,
 });
 
+/**
+ * Padding for a search result. Clears the expanded key whether or not it is open
+ * now, because it can be opened over the results at any time.
+ */
+export const resultPadding = clearOfKey;
+
 /** Padding for the whole-district view, clear of the key when it starts open. */
 export function districtPadding(mapWidth: number): MapPadding {
   return mapKeyStartsOpen()

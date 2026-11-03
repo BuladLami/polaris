@@ -12,7 +12,6 @@ import {
   SHORTLIST_SIZE_ERROR,
   validateRadius,
   validateSearchPoint,
-  zoomForRadius,
 } from "@/lib/search";
 import type {
   RankedSite,
@@ -26,7 +25,8 @@ export interface RecommendationSearchOptions {
   bufferM: number;
   /** `top_n_recommendations` from the dataset, used to seed the field. */
   datasetTopN: number | undefined;
-  flyTo: (lat: number, lon: number, zoom?: number) => void;
+  /** Brings a finished search into view. */
+  showResults: (lat: number, lon: number, radiusM: number) => void;
 }
 
 /**
@@ -42,7 +42,7 @@ export function useRecommendationSearch({
   bounds,
   bufferM,
   datasetTopN,
-  flyTo,
+  showResults,
 }: RecommendationSearchOptions) {
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
@@ -158,8 +158,17 @@ export function useRecommendationSearch({
     setResults(ranked);
     setSummary(nextSummary);
 
-    if (ranked.length > 0) flyTo(lat, lon, zoomForRadius(radiusM));
-  }, [latitude, longitude, radiusInput, shortlist, sites, bounds, bufferM, flyTo]);
+    if (ranked.length > 0) showResults(lat, lon, radiusM);
+  }, [
+    latitude,
+    longitude,
+    radiusInput,
+    shortlist,
+    sites,
+    bounds,
+    bufferM,
+    showResults,
+  ]);
 
   /**
    * True when switching away would discard something the user placed or ran.

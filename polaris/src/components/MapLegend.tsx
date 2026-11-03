@@ -9,10 +9,14 @@ import {
   SUITABILITY_CLASSES,
   type Thresholds,
 } from "@/lib/suitability";
+import { mapKeyStartsOpen } from "@/lib/map-view";
 
 /**
  * Floating map key. Collapsible and bottom-left so it never collides with the
  * zoom controls (top-right) or the MapLibre attribution (bottom-right).
+ *
+ * Collapsing folds the colour key away and leaves the layer switches in place,
+ * since those are what a reader reaches for while working on the map.
  */
 export function MapLegend({
   thresholds = DEFAULT_THRESHOLDS,
@@ -40,7 +44,7 @@ export function MapLegend({
   siteCount: number;
   excludedCount: number;
 }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(mapKeyStartsOpen);
 
   return (
     <div className="pointer-events-none absolute bottom-4 left-4 z-10 max-w-[min(24rem,calc(100%-2rem))]">
@@ -68,7 +72,7 @@ export function MapLegend({
           )}
         >
           <div className="overflow-hidden">
-            <div className="space-y-4 border-t px-4 py-3.5">
+            <div className="space-y-4 border-t px-4 pt-3.5">
               <div>
                 <p className="text-muted-foreground mb-2 text-xs font-semibold tracking-widest uppercase">
                   Suitability score
@@ -115,8 +119,11 @@ export function MapLegend({
                 The closer to 1, the better the site. Flood, landslide and storm
                 surge risk are already counted in every score.
               </p>
+            </div>
+          </div>
+        </div>
 
-              <div className="space-y-2.5 border-t pt-3">
+        <div className="space-y-2.5 border-t px-4 py-3">
                 <LegendToggle
                   checked={showAllSites}
                   onChange={onToggleAllSites}
@@ -137,9 +144,6 @@ export function MapLegend({
                     icon={<Cross className="size-4" />}
                   />
                 )}
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

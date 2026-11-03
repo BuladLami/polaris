@@ -20,12 +20,13 @@ import { useRecommendationSearch } from "@/hooks/use-recommendation-search";
 import { useSiteEvaluation } from "@/hooks/use-site-evaluation";
 import { useTheme } from "@/hooks/use-theme";
 import { boundsOfFeatures, boundsOfSites } from "@/lib/geo";
-import { districtPadding } from "@/lib/map-view";
+import { districtPadding, resultPadding } from "@/lib/map-view";
 import {
   MAX_RADIUS_M,
   MAX_TOP_N,
   MIN_RADIUS_M,
   MIN_TOP_N,
+  zoomForRadius,
 } from "@/lib/search";
 import { isShorelineExcluded, shorelineBufferOf } from "@/lib/suitability";
 import type { AppMode, Site, TopRecommendation } from "@/types/polaris";
@@ -114,13 +115,45 @@ export default function App() {
     );
   }, [districtBounds]);
 
+  /**
+   * Settles on a finished search so its whole radius sits in the part of the map
+   * the key cannot cover. `offset` rather than `padding` here: flyTo's padding
+   * stays on the map afterwards and would skew every later camera move.
+   */
+  const showResults = useCallback((lat: number, lon: number, radiusM: number) => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const padding = resultPadding(map.getContainer().clientWidth);
+    const dLat = radiusM / 110574;
+    const dLon = radiusM / (111320 * Math.cos((lat * Math.PI) / 180));
+    const fit = map.cameraForBounds(
+      [
+        [lon - dLon, lat - dLat],
+        [lon + dLon, lat + dLat],
+      ],
+      { padding },
+    );
+
+    map.flyTo({
+      center: [lon, lat],
+      zoom: Math.min(fit?.zoom ?? Infinity, zoomForRadius(radiusM)),
+      offset: [
+        (padding.left - padding.right) / 2,
+        (padding.top - padding.bottom) / 2,
+      ],
+      duration: 900,
+      essential: true,
+    });
+  }, []);
+
   /* ---- Mode state (independent, so switching loses nothing) ---------- */
   const search = useRecommendationSearch({
     sites,
     bounds,
     bufferM,
     datasetTopN: metadata?.top_n_recommendations,
-    flyTo,
+    showResults,
   });
   const evaluation = useSiteEvaluation({ sites, bounds });
 
