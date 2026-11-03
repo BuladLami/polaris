@@ -22,7 +22,12 @@ export const MAP_KEY_COLLAPSE_WIDTH_PX = 1440;
 export const mapKeyStartsOpen = () =>
   window.innerWidth > MAP_KEY_COLLAPSE_WIDTH_PX;
 
-const clearOfKey = (mapWidth: number): MapPadding => ({
+/**
+ * Padding for any framed view. Clears the expanded key whether or not it is open
+ * now: it can be opened at any time, and even collapsed it sits over the map's
+ * bottom-left corner.
+ */
+export const framePadding = (mapWidth: number): MapPadding => ({
   top: EDGE_PX,
   right: EDGE_PX,
   bottom: EDGE_PX,
@@ -31,16 +36,3 @@ const clearOfKey = (mapWidth: number): MapPadding => ({
       ? MAP_KEY_CLEARANCE_PX
       : EDGE_PX,
 });
-
-/**
- * Padding for a search result. Clears the expanded key whether or not it is open
- * now, because it can be opened over the results at any time.
- */
-export const resultPadding = clearOfKey;
-
-/** Padding for the whole-district view, clear of the key when it starts open. */
-export function districtPadding(mapWidth: number): MapPadding {
-  return mapKeyStartsOpen()
-    ? clearOfKey(mapWidth)
-    : { top: EDGE_PX, right: EDGE_PX, bottom: EDGE_PX, left: EDGE_PX };
-}

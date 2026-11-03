@@ -10,7 +10,7 @@ import {
 } from "@/components/map/use-map-source";
 import type { Theme } from "@/hooks/use-theme";
 import type { LngLatBounds } from "@/lib/geo";
-import { districtPadding } from "@/lib/map-view";
+import { framePadding } from "@/lib/map-view";
 import type { AppMode, Site, SuitabilityClass } from "@/types/polaris";
 import {
   CLASS_HEX,
@@ -48,7 +48,7 @@ export function DistrictView({ bounds }: { bounds: LngLatBounds | null }) {
         [bounds.west, bounds.south],
         [bounds.east, bounds.north],
       ],
-      { padding: districtPadding(map.getContainer().clientWidth), duration: 0 },
+      { padding: framePadding(map.getContainer().clientWidth), duration: 0 },
     );
   }, [map, isLoaded, bounds]);
 

@@ -20,7 +20,7 @@ import { useRecommendationSearch } from "@/hooks/use-recommendation-search";
 import { useSiteEvaluation } from "@/hooks/use-site-evaluation";
 import { useTheme } from "@/hooks/use-theme";
 import { boundsOfFeatures, boundsOfSites } from "@/lib/geo";
-import { districtPadding, resultPadding } from "@/lib/map-view";
+import { framePadding } from "@/lib/map-view";
 import {
   MAX_RADIUS_M,
   MAX_TOP_N,
@@ -108,7 +108,7 @@ export default function App() {
         [districtBounds.east, districtBounds.north],
       ],
       {
-        padding: districtPadding(map.getContainer().clientWidth),
+        padding: framePadding(map.getContainer().clientWidth),
         duration: 900,
         essential: true,
       },
@@ -124,7 +124,7 @@ export default function App() {
     const map = mapRef.current;
     if (!map) return;
 
-    const padding = resultPadding(map.getContainer().clientWidth);
+    const padding = framePadding(map.getContainer().clientWidth);
     const dLat = radiusM / 110574;
     const dLon = radiusM / (111320 * Math.cos((lat * Math.PI) / 180));
     const fit = map.cameraForBounds(
