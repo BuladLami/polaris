@@ -206,8 +206,9 @@ export function SuitabilityMap({
         </MapMarker>
       )}
 
-      {/* Top-N recommended sites (panel revision #4) */}
-      {topRecommendations.map((rec) => (
+      {/* Top-N recommended sites (panel revision #4). Added lowest rank first, so
+          where neighbouring sites overlap the better one stays on top. */}
+      {[...topRecommendations].reverse().map((rec) => (
         <MapMarker
           key={rec.site_id}
           longitude={rec.longitude}
@@ -215,9 +216,12 @@ export function SuitabilityMap({
           onClick={() => onSelectSite(rec.site_id)}
         >
           <MarkerContent>
-            <div className="group relative grid cursor-pointer place-items-center">
-              <span className="bg-suit-high/35 absolute size-8 rounded-full animate-pulse-ring" />
-              <span className="border-background bg-suit-high grid size-8 place-items-center rounded-full border-[2.5px] text-sm font-bold text-white shadow-xl transition-transform duration-200 group-hover:scale-110">
+            <div className="group relative grid place-items-center">
+              <span className="bg-suit-high/35 pointer-events-none absolute size-6 rounded-full animate-pulse-ring" />
+              <span
+                data-rank-marker
+                className="border-background bg-suit-high grid size-6 cursor-pointer place-items-center rounded-full border-2 text-xs font-bold text-white shadow-xl transition-transform duration-200 group-hover:scale-110"
+              >
                 {rec.recommendation_rank}
               </span>
             </div>

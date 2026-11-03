@@ -124,26 +124,26 @@ export function MapLegend({
         </div>
 
         <div className="space-y-2.5 border-t px-4 py-3">
-                <LegendToggle
-                  checked={showAllSites}
-                  onChange={onToggleAllSites}
-                  label={`All ${siteCount.toLocaleString()} scored sites`}
-                />
-                <LegendToggle
-                  checked={showShorelineBuffer}
-                  onChange={onToggleShorelineBuffer}
-                  label={`${shorelineBufferM} m shoreline buffer`}
-                  hint={`${excludedCount} site${excludedCount === 1 ? "" : "s"} ruled out`}
-                  icon={<Waves className="size-4" />}
-                />
-                {facilityCount !== null && (
-                  <LegendToggle
-                    checked={showFacilities}
-                    onChange={onToggleFacilities}
-                    label="Existing health facilities"
-                    icon={<Cross className="size-4" />}
-                  />
-                )}
+          <LegendToggle
+            checked={showAllSites}
+            onChange={onToggleAllSites}
+            label={`All ${siteCount.toLocaleString()} scored sites`}
+          />
+          <LegendToggle
+            checked={showShorelineBuffer}
+            onChange={onToggleShorelineBuffer}
+            label={`${shorelineBufferM} m shoreline buffer`}
+            hint={`${excludedCount} site${excludedCount === 1 ? "" : "s"} ruled out`}
+            icon={<Waves className="size-4" />}
+          />
+          {facilityCount !== null && (
+            <LegendToggle
+              checked={showFacilities}
+              onChange={onToggleFacilities}
+              label="Existing health facilities"
+              icon={<Cross className="size-4" />}
+            />
+          )}
         </div>
       </div>
     </div>

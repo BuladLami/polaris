@@ -251,3 +251,15 @@
 .maplibregl-canvas:focus {
   outline: none;
 }
+
+/* Sites 250 m apart sit under 20 px apart when a wide search is in view. A marker
+   element is a square, so its corners would block the neighbour beside it; taking
+   hits on the numbered circle alone keeps each marker reachable. Clicks still
+   bubble to the listener on the marker element. */
+.maplibregl-marker:has([data-rank-marker]) {
+  pointer-events: none;
+}
+
+[data-rank-marker] {
+  pointer-events: auto;
+}
