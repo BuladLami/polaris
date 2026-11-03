@@ -146,6 +146,7 @@ export interface DatasetMetadata {
   advisory_note: string;
   generated_by?: string;
   generated_at?: string;
+  osm_snapshot_date?: string;
 }
 
 export interface PolarisDataset {

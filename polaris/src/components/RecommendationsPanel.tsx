@@ -27,7 +27,7 @@ export function RecommendationsPanel({
       <EmptyState
         icon={<MapPinned className="size-5" />}
         title="No search yet"
-        body="Place a search centre on the map and press the button above. POLARIS will rank every site inside the radius and give you the best three."
+        body="Place a search centre on the map and press the button above. POLARIS will rank every site inside the radius and show you the best ones."
       />
     );
   }

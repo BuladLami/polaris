@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { MAX_TOP_N, MIN_TOP_N } from "@/lib/search";
 import { HAZARD_LABEL, SERVICE_FACTOR_LABEL } from "@/lib/suitability";
 import type { DatasetMetadata, HazardKey, ServiceFactorKey } from "@/types/polaris";
 
@@ -175,10 +176,10 @@ export function DatasetInfoDialog({
               </li>
               <li>
                 <strong className="text-foreground">
-                  Only the top {metadata.top_n_recommendations}.
+                  A short list only.
                 </strong>{" "}
-                You get a short list instead of thousands of near-identical
-                options to sift through.
+                You choose how many sites to see, from {MIN_TOP_N} to {MAX_TOP_N},
+                instead of sifting through thousands of near-identical options.
               </li>
             </ul>
           </section>
@@ -188,6 +189,8 @@ export function DatasetInfoDialog({
               This data was prepared{" "}
               {new Date(metadata.generated_at).toLocaleString()}
               {metadata.generated_by ? ` by ${metadata.generated_by}` : ""}.
+              {metadata.osm_snapshot_date &&
+                ` Map data is from OpenStreetMap as of ${metadata.osm_snapshot_date}.`}
             </p>
           )}
         </DialogBody>

@@ -83,7 +83,15 @@ export function SiteDetailsDialog({
 
   return (
     <Dialog open={site !== null} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      {/* Focus the dialog itself: the first control carries a tooltip, which would
+          otherwise pop open on arrival and take the first press of Escape. */}
+      <DialogContent
+        className="max-w-2xl"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          (event.target as HTMLElement).focus();
+        }}
+      >
         {site && (
           <>
             <DialogHeader>

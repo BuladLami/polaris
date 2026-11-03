@@ -19,7 +19,7 @@ const MODE_CARDS: {
     id: "recommendation",
     title: "Recommend sites",
     description:
-      "Pick a search area and get the three best sites inside it, each with a written explanation of why.",
+      "Pick a search area and get the best sites inside it, each with a written explanation of why.",
     icon: Compass,
   },
   {

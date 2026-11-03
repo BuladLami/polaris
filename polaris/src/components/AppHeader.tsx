@@ -38,7 +38,7 @@ const MODES: { id: AppMode; label: string; icon: typeof Compass; hint: string }[
       id: "recommendation",
       label: "Recommend",
       icon: Compass,
-      hint: "Search an area and get the three best sites inside it.",
+      hint: "Search an area and get the best sites inside it.",
     },
     {
       id: "evaluation",
