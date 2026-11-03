@@ -44,6 +44,36 @@ export interface SiteFactors {
 export type SiteFactorsNormalized = Record<ServiceFactorKey, number> &
   Record<HazardKey, number>;
 
+/**
+ * Where a site stands in the district on one service factor, by quartile of the
+ * exported value. `top_quartile` is always the end that helps the score: most
+ * buildings, closest to a road, farthest from an existing facility.
+ */
+export type RankBand =
+  | "top_quartile"
+  | "upper_middle"
+  | "lower_middle"
+  | "bottom_quartile";
+
+export interface FactorRank {
+  band: RankBand;
+  /** Share of sites this one strictly beats on the factor, 0–100. */
+  percentile: number;
+}
+
+/**
+ * The pipeline writes the interpretation from these bands, so a reading built
+ * from them cannot disagree with the text above it.
+ */
+export interface SiteRankBands {
+  building_density: FactorRank;
+  road_accessibility: FactorRank;
+  facility_distance: FactorRank & {
+    /** The same test that puts "underserved" in the interpretation. */
+    underserved: boolean;
+  };
+}
+
 export interface Site {
   site_id: string;
   latitude: number;
@@ -62,6 +92,8 @@ export interface Site {
   suitability_class: SuitabilityClass;
   /** 0–4 hybrid level; 0 whenever the site is ineligible. */
   recommendation_level: number;
+  /** The level in words. Absent only on the migrated bridge dataset. */
+  recommendation_label?: string;
   /** False when a High hazard applies or the site sits inside the shoreline buffer. */
   recommendation_eligible: boolean;
   /** Plain-language narrative naming the concrete score drivers. */
@@ -69,6 +101,8 @@ export interface Site {
   factors: SiteFactors;
   factors_normalized: SiteFactorsNormalized;
   hazards: Record<HazardKey, HazardLevel>;
+  /** Absent only on the migrated bridge dataset. */
+  rank_bands?: SiteRankBands;
 }
 
 export interface TopRecommendation {
