@@ -26,6 +26,23 @@ const defaultStyles = {
   light: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
 };
 
+/**
+ * Where the default basemap falls back to when a provider cannot be reached.
+ * Some networks (campus and ISP filters) refuse CARTO's hosts outright, which
+ * used to leave the map stuck on its loader. Level 1 is OpenFreeMap's matching
+ * light/dark styles; level 2 is the blank style, so the app's own layers still
+ * draw even with no basemap at all.
+ */
+const FALLBACK_STYLES = [
+  {
+    dark: "https://tiles.openfreemap.org/styles/dark",
+    light: "https://tiles.openfreemap.org/styles/positron",
+  },
+] as const;
+
+/** Tile failures, with none succeeding, before a provider counts as blocked. */
+const TILE_FAILURES_BEFORE_FALLBACK = 3;
+
 // A tile-less, dependency-free style with a transparent background. Use it for
 // data visualizations (choropleths, world arcs, dot maps) where you draw your
 // own layers and don't need a street basemap. The easiest way to opt in is the
@@ -260,9 +277,14 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
 
   const stableStyles = useStableValue(styles);
 
+  /** 0 = CARTO, 1.. = FALLBACK_STYLES, past the end = blank. Default styles only. */
+  const [fallbackLevel, setFallbackLevel] = useState(0);
+  const usesDefaultStyles = !stableStyles && !blank;
+
   const mapStyles = useMemo(() => {
     // Explicit styles win. Otherwise `blank` opts into the transparent
-    // tile-less basemap; with neither, fall back to the Carto defaults.
+    // tile-less basemap; with neither, use the Carto defaults, or the
+    // fallback a blocked provider has pushed us to.
     if (stableStyles) {
       return {
         dark: stableStyles.dark ?? defaultStyles.dark,
@@ -272,8 +294,24 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
     if (blank) {
       return { dark: blankMapStyle, light: blankMapStyle };
     }
-    return defaultStyles;
-  }, [stableStyles, blank]);
+    if (fallbackLevel === 0) return defaultStyles;
+    return (
+      FALLBACK_STYLES[fallbackLevel - 1] ?? {
+        dark: blankMapStyle,
+        light: blankMapStyle,
+      }
+    );
+  }, [stableStyles, blank, fallbackLevel]);
+
+  // Read inside map event handlers, which are bound once at creation.
+  const fallbackStateRef = useRef({
+    enabled: usesDefaultStyles,
+    level: fallbackLevel,
+    styleLoaded: false,
+    tileFailures: 0,
+    tileLoaded: false,
+  });
+  fallbackStateRef.current.enabled = usesDefaultStyles;
 
   // Expose the map instance to the parent component
   useImperativeHandle(ref, () => mapInstance as MapLibreGL.Map, [mapInstance]);
@@ -299,9 +337,51 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
 
     const styleLoadHandler = () => {
       styleSwapInFlightRef.current = false;
+      fallbackStateRef.current.styleLoaded = true;
       setIsStyleLoaded(true);
     };
     const loadHandler = () => setIsLoaded(true);
+
+    /**
+     * Moves to the next basemap when this one is unreachable: the style itself
+     * failed to load, or its first tiles all failed with none arriving. Both are
+     * what a blocked host looks like; a single flaky tile is not.
+     */
+    const advanceFallback = (reason: string) => {
+      const state = fallbackStateRef.current;
+      if (!state.enabled || state.level > FALLBACK_STYLES.length) return;
+      state.level += 1;
+      state.styleLoaded = false;
+      state.tileFailures = 0;
+      state.tileLoaded = false;
+      console.warn(
+        `[map] basemap unreachable (${reason}); switching to ${
+          state.level <= FALLBACK_STYLES.length
+            ? "fallback provider"
+            : "blank basemap"
+        }`,
+      );
+      setFallbackLevel(state.level);
+    };
+
+    const errorHandler = (e: MapLibreGL.ErrorEvent & { sourceId?: string }) => {
+      const state = fallbackStateRef.current;
+      if (!state.enabled) return;
+      if (!state.styleLoaded) {
+        advanceFallback(e.error?.message ?? "style failed to load");
+      } else if (e.sourceId && !state.tileLoaded) {
+        state.tileFailures += 1;
+        if (state.tileFailures >= TILE_FAILURES_BEFORE_FALLBACK) {
+          advanceFallback("basemap tiles failed to load");
+        }
+      }
+    };
+
+    const dataHandler = (e: MapLibreGL.MapDataEvent) => {
+      if (e.dataType === "source" && "tile" in e && e.tile) {
+        fallbackStateRef.current.tileLoaded = true;
+      }
+    };
 
     // Viewport change handler - skip if triggered by internal update
     const handleMove = () => {
@@ -312,12 +392,16 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
     map.on("load", loadHandler);
     map.on("style.load", styleLoadHandler);
     map.on("move", handleMove);
+    map.on("error", errorHandler);
+    map.on("data", dataHandler);
     setMapInstance(map);
 
     return () => {
       map.off("load", loadHandler);
       map.off("style.load", styleLoadHandler);
       map.off("move", handleMove);
+      map.off("error", errorHandler);
+      map.off("data", dataHandler);
       map.remove();
       setIsLoaded(false);
       setIsStyleLoaded(false);
@@ -365,6 +449,10 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
     if (currentStyleRef.current === newStyle) return;
 
     currentStyleRef.current = newStyle;
+    // The incoming style gets the same unreachable-provider check as the first.
+    fallbackStateRef.current.styleLoaded = false;
+    fallbackStateRef.current.tileFailures = 0;
+    fallbackStateRef.current.tileLoaded = false;
     setIsStyleLoaded(false);
     setPendingStyle(newStyle);
   }, [mapInstance, resolvedTheme, mapStyles]);
