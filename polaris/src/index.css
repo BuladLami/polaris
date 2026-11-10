@@ -110,6 +110,52 @@
   --animate-rise-in: rise-in 0.34s cubic-bezier(0.22, 1, 0.36, 1);
   --animate-slide-in: slide-in 0.32s cubic-bezier(0.22, 1, 0.36, 1);
   --animate-pulse-ring: pulse-ring 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  /* Welcome pages only: a slower entrance, and slow ambient motion. */
+  --animate-hero-in: hero-in 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-glow: glow 6s ease-in-out infinite;
+  --animate-drift: drift 22s ease-in-out infinite alternate;
+
+  @keyframes hero-in {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+      filter: blur(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+  }
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-6px);
+    }
+  }
+  @keyframes glow {
+    0%,
+    100% {
+      opacity: 0.35;
+      transform: scale(0.95);
+    }
+    50% {
+      opacity: 0.6;
+      transform: scale(1.05);
+    }
+  }
+  @keyframes drift {
+    from {
+      transform: translate(0, 0) scale(1);
+    }
+    to {
+      transform: translate(40px, 24px) scale(1.08);
+    }
+  }
 
   @keyframes fade-in {
     from {

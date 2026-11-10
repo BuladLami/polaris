@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowRight, Compass, Crosshair, MapPin } from "lucide-react";
+import { ArrowLeft, ArrowRight, Compass, Crosshair, MapPin } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +31,16 @@ const MODE_CARDS: {
   },
 ];
 
+const ADVISORY_FALLBACK =
+  "POLARIS is only a guide. The final decision on where to build a health facility still rests with the planning officers.";
+
+/**
+ * The way into the app, in two steps so neither is crowded:
+ *
+ *   1. Landing: what POLARIS is, in one sentence, and "Get started".
+ *   2. Before you start: the score guide (panel revision #5, so it still comes
+ *      before any number is shown) and the choice of mode, which opens the map.
+ */
 export function WelcomeScreen({
   metadata,
   siteCount,
@@ -40,53 +50,156 @@ export function WelcomeScreen({
   siteCount: number;
   onEnter: (mode: AppMode) => void;
 }) {
+  const [step, setStep] = useState<"landing" | "intro">("landing");
+
+  return step === "landing" ? (
+    <Landing
+      metadata={metadata}
+      siteCount={siteCount}
+      onGetStarted={() => setStep("intro")}
+    />
+  ) : (
+    <Intro
+      metadata={metadata}
+      onBack={() => setStep("landing")}
+      onEnter={onEnter}
+    />
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Step 1 — landing                                                   */
+/* ------------------------------------------------------------------ */
+
+function Landing({
+  metadata,
+  siteCount,
+  onGetStarted,
+}: {
+  metadata: DatasetMetadata | null;
+  siteCount: number;
+  onGetStarted: () => void;
+}) {
+  return (
+    <div className="relative flex h-full flex-col overflow-y-auto">
+      {/* A soft wash of the brand colour behind the hero, and two faint shapes
+          drifting slowly in it, so the page has some life without anything
+          extra to read. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="from-primary/10 absolute inset-x-0 top-0 h-[60%] bg-gradient-to-b to-transparent" />
+        <div className="animate-drift bg-primary/15 absolute -top-24 left-[12%] size-[26rem] rounded-full blur-3xl" />
+        <div
+          className="animate-drift bg-facility-ring/10 absolute top-[30%] right-[8%] size-[22rem] rounded-full blur-3xl"
+          style={{ animationDelay: "-11s", animationDirection: "alternate-reverse" }}
+        />
+      </div>
+
+      <main className="relative flex flex-1 items-center justify-center px-4 py-12">
+        <div className="flex max-w-xl flex-col items-center text-center">
+          <div className="animate-hero-in relative isolate">
+            <div
+              aria-hidden
+              className="animate-glow bg-primary/40 absolute inset-0 -z-10 rounded-3xl blur-2xl"
+            />
+            <img
+              src="/logo-lockup.png"
+              alt=""
+              width={360}
+              height={518}
+              className="animate-float w-24 rounded-2xl border shadow-lg sm:w-28"
+            />
+          </div>
+
+          <Badge
+            variant="secondary"
+            className="animate-hero-in mt-6 gap-1.5"
+            style={{ animationDelay: "120ms", animationFillMode: "backwards" }}
+          >
+            <MapPin className="size-3" />
+            {metadata?.study_area ?? "Talomo District, Davao City"}
+          </Badge>
+
+          <h1
+            className="animate-hero-in mt-3 text-4xl font-bold tracking-tight sm:text-5xl"
+            style={{ animationDelay: "200ms", animationFillMode: "backwards" }}
+          >
+            POLARIS
+          </h1>
+
+          <p
+            className="animate-hero-in text-muted-foreground mt-4 text-base leading-relaxed text-balance sm:text-lg"
+            style={{ animationDelay: "280ms", animationFillMode: "backwards" }}
+          >
+            Find the best places for a new health facility. Every one of{" "}
+            <strong className="text-foreground">
+              {siteCount.toLocaleString()}
+            </strong>{" "}
+            possible sites in the district already has a score.
+          </p>
+
+          <Button
+            size="lg"
+            className="animate-hero-in group mt-8 h-12 px-8 text-base shadow-md transition-[translate,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-lg"
+            style={{ animationDelay: "380ms", animationFillMode: "backwards" }}
+            onClick={onGetStarted}
+          >
+            Get started
+            <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" />
+          </Button>
+        </div>
+      </main>
+
+      <footer
+        className="animate-hero-in text-muted-foreground relative px-4 pb-6 text-center text-[11px] leading-relaxed"
+        style={{ animationDelay: "500ms", animationFillMode: "backwards" }}
+      >
+        <p className="mx-auto max-w-xl">
+          {metadata?.advisory_note ?? ADVISORY_FALLBACK}
+        </p>
+        <p className="mt-1">
+          University of the Immaculate Conception — College of Computer Studies,
+          Davao City
+        </p>
+      </footer>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Step 2 — before you start                                          */
+/* ------------------------------------------------------------------ */
+
+function Intro({
+  metadata,
+  onBack,
+  onEnter,
+}: {
+  metadata: DatasetMetadata | null;
+  onBack: () => void;
+  onEnter: (mode: AppMode) => void;
+}) {
   const [selected, setSelected] = useState<AppMode | null>(null);
   const thresholds = thresholdsOf(metadata);
 
   return (
     <ScrollArea className="h-full">
-      <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col gap-8 px-5 py-10 sm:py-14">
-        {/* Masthead */}
-        <header className="animate-rise-in flex items-start gap-6">
-          <div className="min-w-0 flex-1 space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary" className="gap-1.5">
-                <MapPin className="size-3" />
-                {metadata?.study_area ?? "Talomo District, Davao City"}
-              </Badge>
-            </div>
-
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              POLARIS
-            </h1>
-            <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed sm:text-base">
-              A map-based tool for deciding where to put a new health facility.
-              It has already scored{" "}
-              <strong className="text-foreground">
-                {siteCount.toLocaleString()}
-              </strong>{" "}
-              possible sites across the district from 0 to 1, so you can see at
-              a glance which ones are worth considering.
-            </p>
-          </div>
-
-          {/* The full lockup, wordmark included. `alt=""` because the heading
-              beside it already says POLARIS — announcing it twice is noise.
-              Hidden on phones, where the column is too narrow to give it room
-              without pushing the score guide below the fold. */}
-          <img
-            src="/logo-lockup.png"
-            alt=""
-            width={360}
-            height={518}
-            className="hidden w-28 shrink-0 rounded-xl border shadow-sm sm:block lg:w-32"
-          />
-        </header>
+      <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col gap-8 px-5 py-8 sm:py-12">
+        <div className="animate-hero-in">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground -ml-2"
+            onClick={onBack}
+          >
+            <ArrowLeft className="size-4" />
+            Back
+          </Button>
+        </div>
 
         {/* Panel revision #5 — the guide comes BEFORE any number is shown. */}
         <section
-          className="animate-rise-in space-y-3"
-          style={{ animationDelay: "60ms", animationFillMode: "backwards" }}
+          className="animate-hero-in space-y-3"
+          style={{ animationDelay: "80ms", animationFillMode: "backwards" }}
         >
           <div className="space-y-1">
             <h2 className="text-lg font-semibold tracking-tight">
@@ -101,8 +214,8 @@ export function WelcomeScreen({
 
         {/* Mode choice */}
         <section
-          className="animate-rise-in space-y-3"
-          style={{ animationDelay: "120ms", animationFillMode: "backwards" }}
+          className="animate-hero-in space-y-3"
+          style={{ animationDelay: "200ms", animationFillMode: "backwards" }}
         >
           <h2 className="text-lg font-semibold tracking-tight">
             What would you like to do?
@@ -178,14 +291,7 @@ export function WelcomeScreen({
         </section>
 
         <footer className="text-muted-foreground border-t pt-5 text-xs leading-relaxed">
-          <p>
-            {metadata?.advisory_note ??
-              "POLARIS is only a guide. The final decision on where to build a health facility still rests with the planning officers."}
-          </p>
-          <p className="mt-1">
-            University of the Immaculate Conception — College of Computer
-            Studies, Davao City.
-          </p>
+          <p>{metadata?.advisory_note ?? ADVISORY_FALLBACK}</p>
         </footer>
       </div>
     </ScrollArea>
