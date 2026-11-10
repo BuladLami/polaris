@@ -155,6 +155,43 @@ export interface PolarisDataset {
   sites: Site[];
 }
 
+/**
+ * Properties of one feature in `public/data/talomo_facilities.json`.
+ *
+ * The detail fields are OSM tags the pipeline carries through for display
+ * only; none of them reaches a score. Any of them may be absent or null — OSM
+ * coverage is uneven, and most barangay health stations carry a name and
+ * nothing else.
+ */
+export interface FacilityProperties {
+  name: string | null;
+  /** Raw OSM `amenity`: hospital, clinic, doctors or health_post. */
+  amenity: string | null;
+  kind?: string | null;
+  osm_type?: "node" | "way" | "relation" | null;
+  osm_id?: number | null;
+  also_known_as?: string | null;
+  /** `healthcare:speciality`, semicolon-separated. */
+  speciality?: string | null;
+  operator?: string | null;
+  operator_type?: string | null;
+  address?: string | null;
+  /** Semicolon-separated when OSM lists more than one number. */
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  facebook?: string | null;
+  /** OSM `opening_hours` syntax, e.g. "Mo-Sa 08:00-17:00". */
+  opening_hours?: string | null;
+  beds?: string | null;
+  emergency?: string | null;
+  wheelchair?: string | null;
+  /** Position in the displayed (district-clipped) list; set on load. */
+  fid?: number;
+  /** 1 when the facility has anything to show beyond its name; set on load. */
+  has_details?: 0 | 1;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Derived view models                                                */
 /* ------------------------------------------------------------------ */

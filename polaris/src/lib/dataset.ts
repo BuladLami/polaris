@@ -1,5 +1,6 @@
 import type { FeatureCollection } from "geojson";
 
+import { indexFacilities, type FacilityCollection } from "@/lib/facilities";
 import { isInsideGeometry } from "@/lib/geo";
 import type { PolarisDataset } from "@/types/polaris";
 
@@ -19,9 +20,10 @@ export interface PolarisBundle {
   /**
    * Existing health facilities, clipped to the district boundary for display.
    * Not the full referent for `facility_distance_m` — that was measured against
-   * the pipeline's unclipped set, which extends past Talomo.
+   * the pipeline's unclipped set, which extends past Talomo. Each feature is
+   * stamped with `fid` and `has_details` (see `indexFacilities`).
    */
-  facilities: FeatureCollection | null;
+  facilities: FacilityCollection | null;
   /** Barangay names that actually contain at least one scored site. */
   barangays: BarangayEntry[];
   loadedAt: Date;
@@ -164,7 +166,7 @@ async function fetchBundle(force: boolean): Promise<PolarisBundle> {
     dataset,
     boundary,
     coastline,
-    facilities: facilitiesWithinBoundary(facilities, boundary),
+    facilities: indexFacilities(facilitiesWithinBoundary(facilities, boundary)),
     barangays: deriveBarangays(dataset),
     loadedAt: new Date(),
   };

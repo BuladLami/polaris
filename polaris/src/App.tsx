@@ -4,6 +4,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DatasetInfoDialog } from "@/components/DatasetInfoDialog";
 import { EvaluationPanel } from "@/components/EvaluationPanel";
+import { FacilityDetailsDialog } from "@/components/FacilityDetailsDialog";
 import { MapLegend } from "@/components/MapLegend";
 import { RecommendationsPanel } from "@/components/RecommendationsPanel";
 import { ScoreGuideDialog } from "@/components/ScoreGuideDialog";
@@ -51,6 +52,12 @@ export default function App() {
   const [scoreGuideOpen, setScoreGuideOpen] = useState(false);
   const [datasetInfoOpen, setDatasetInfoOpen] = useState(false);
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
+  /** Site picked in "Find a site"; pinned on the map until cleared. */
+  const [foundSiteId, setFoundSiteId] = useState<string | null>(null);
+  /** `fid` of the facility whose details are open, if any. */
+  const [selectedFacilityId, setSelectedFacilityId] = useState<number | null>(
+    null,
+  );
   /** Mode the user asked for, held until they confirm discarding the current one. */
   const [pendingMode, setPendingMode] = useState<AppMode | null>(null);
   // The scored-sites layer and the shoreline band stay off at first paint, so
@@ -185,6 +192,22 @@ export default function App() {
     ? (siteIndex.get(selectedSiteId) ?? null)
     : null;
 
+  const foundSite = foundSiteId ? (siteIndex.get(foundSiteId) ?? null) : null;
+
+  const handleFindSite = useCallback(
+    (site: Site) => {
+      setFoundSiteId(site.site_id);
+      setSelectedSiteId(site.site_id);
+      flyTo(site.latitude, site.longitude, 16.5);
+    },
+    [flyTo],
+  );
+
+  const selectedFacility =
+    selectedFacilityId !== null
+      ? (bundle?.facilities?.features[selectedFacilityId] ?? null)
+      : null;
+
   const selectedRank = useMemo(
     () =>
       mapRecommendations.find((r) => r.site_id === selectedSiteId)
@@ -214,6 +237,7 @@ export default function App() {
   const handleClear = useCallback(() => {
     clearActiveMode();
     setSelectedSiteId(null);
+    setFoundSiteId(null);
     showDistrict();
   }, [clearActiveMode, showDistrict]);
 
@@ -229,6 +253,7 @@ export default function App() {
     clearSearch();
     clearEvaluation();
     setSelectedSiteId(null);
+    setFoundSiteId(null);
     setShowWelcome(true);
     showDistrict();
   }, [clearSearch, clearEvaluation, showDistrict]);
@@ -256,6 +281,7 @@ export default function App() {
     if (!pendingMode) return;
     clearActiveMode();
     setSelectedSiteId(null);
+    setFoundSiteId(null);
     setMode(pendingMode);
     setPendingMode(null);
     showDistrict();
@@ -336,6 +362,8 @@ export default function App() {
               searchRadiusM={Number.parseFloat(search.radiusInput) || 0}
               evalPoint={evaluation.point}
               onSelectSite={setSelectedSiteId}
+              onSelectFacility={setSelectedFacilityId}
+              foundSite={foundSite}
               onPickLocation={handlePickLocation}
             />
 
@@ -361,6 +389,9 @@ export default function App() {
                 <SearchPanel
                   mode={mode}
                   barangays={bundle.barangays}
+                  sites={sites}
+                  bufferM={bufferM}
+                  onFindSite={handleFindSite}
                   latitude={isRecommendation ? search.latitude : evaluation.latitude}
                   longitude={
                     isRecommendation ? search.longitude : evaluation.longitude
@@ -430,6 +461,11 @@ export default function App() {
         metadata={metadata}
         recommendationRank={selectedRank}
         onOpenChange={(open) => !open && setSelectedSiteId(null)}
+      />
+      <FacilityDetailsDialog
+        facility={selectedFacility}
+        snapshotDate={metadata?.osm_snapshot_date}
+        onOpenChange={(open) => !open && setSelectedFacilityId(null)}
       />
       <ConfirmDialog
         open={pendingMode !== null}

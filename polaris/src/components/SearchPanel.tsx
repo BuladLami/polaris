@@ -1,15 +1,18 @@
 import { useMemo, useState } from "react";
-import { AlertCircle, Locate, RotateCcw, Search, Trash2, X } from "lucide-react";
+import { AlertCircle, Hash, Locate, RotateCcw, Search, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { BarangayEntry } from "@/lib/dataset";
-import type { AppMode } from "@/types/polaris";
+import { CLASS_HEX, formatScore, isShorelineExcluded } from "@/lib/suitability";
+import type { AppMode, Site } from "@/types/polaris";
 
 export interface SearchPanelProps {
   mode: AppMode;
   barangays: readonly BarangayEntry[];
+  sites: readonly Site[];
+  bufferM: number;
   latitude: string;
   longitude: string;
   radiusM: string;
@@ -27,11 +30,14 @@ export interface SearchPanelProps {
   onRun: () => void;
   onClear: () => void;
   onFlyTo: (lat: number, lon: number, zoom: number) => void;
+  onFindSite: (site: Site) => void;
 }
 
 export function SearchPanel({
   mode,
   barangays,
+  sites,
+  bufferM,
   latitude,
   longitude,
   radiusM,
@@ -49,6 +55,7 @@ export function SearchPanel({
   onRun,
   onClear,
   onFlyTo,
+  onFindSite,
 }: SearchPanelProps) {
   const isRecommendation = mode === "recommendation";
   const hasPoint = latitude.trim() !== "" && longitude.trim() !== "";
@@ -58,6 +65,7 @@ export function SearchPanel({
 
   return (
     <section className="space-y-3">
+      <SiteFinder sites={sites} bufferM={bufferM} onFindSite={onFindSite} />
       <BarangayFinder barangays={barangays} onFlyTo={onFlyTo} />
 
       <div className="space-y-2">
@@ -192,6 +200,154 @@ function LabelledInput({
         {...props}
       />
     </label>
+  );
+}
+
+/** Trailing number of an id such as "TALOMO_0765", or null. */
+function siteNumber(id: string): number | null {
+  const m = /(\d+)\s*$/.exec(id);
+  return m ? Number.parseInt(m[1], 10) : null;
+}
+
+/**
+ * Sites matching a typed id. A bare number matches the site with that number
+ * ("765", "0765" and "TALOMO_765" all find TALOMO_0765) before any partial
+ * match, so the exact site is always first and Enter picks it.
+ */
+export function matchSites(sites: readonly Site[], query: string): Site[] {
+  const q = query.trim().toUpperCase().replace(/\s+/g, "_");
+  if (!q) return [];
+
+  const wanted = siteNumber(q);
+  const exact = sites.filter(
+    (s) =>
+      s.site_id.toUpperCase() === q ||
+      (wanted !== null &&
+        siteNumber(s.site_id) === wanted &&
+        // "TALOMO_765" must not also match some other prefix's 765.
+        (/^\d+$/.test(q) || s.site_id.toUpperCase().startsWith(q.replace(/_?\d+$/, "")))),
+  );
+  const digits = /^\d+$/.test(q) ? q : null;
+  const partial = sites.filter(
+    (s) =>
+      !exact.includes(s) &&
+      (s.site_id.toUpperCase().includes(q) ||
+        (digits !== null && s.site_id.includes(digits))),
+  );
+  return [...exact, ...partial].slice(0, 8);
+}
+
+/**
+ * Find one scored site by its id. Picking a match flies to it and opens its
+ * details, the same dialog a click on its dot opens.
+ */
+function SiteFinder({
+  sites,
+  bufferM,
+  onFindSite,
+}: {
+  sites: readonly Site[];
+  bufferM: number;
+  onFindSite: (site: Site) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const matches = useMemo(() => matchSites(sites, query), [sites, query]);
+
+  const pick = (site: Site) => {
+    onFindSite(site);
+    setQuery(site.site_id);
+    setOpen(false);
+  };
+
+  const example = sites[0]?.site_id ?? "TALOMO_0001";
+
+  return (
+    <div className="space-y-2">
+      <label
+        htmlFor="site-finder"
+        className="text-muted-foreground block text-xs font-semibold tracking-widest uppercase"
+      >
+        Find a site
+      </label>
+
+      <div className="relative">
+        <Hash className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2" />
+        <Input
+          id="site-finder"
+          value={query}
+          placeholder={`Site ID or number, e.g. ${example} or ${siteNumber(example) ?? 1}`}
+          autoComplete="off"
+          spellCheck={false}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && matches[0]) {
+              e.preventDefault();
+              pick(matches[0]);
+            } else if (e.key === "Escape") {
+              setOpen(false);
+            }
+          }}
+          className="pr-8 pl-8"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("");
+              setOpen(false);
+            }}
+            className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2 transition-colors"
+            aria-label="Clear site search"
+          >
+            <X className="size-3.5" />
+          </button>
+        )}
+      </div>
+
+      {open && query.trim() && (
+        <ul className="animate-fade-in bg-muted/40 max-h-56 space-y-0.5 overflow-y-auto rounded-lg border p-1">
+          {matches.length === 0 && (
+            <li className="text-muted-foreground px-2 py-2 text-xs">
+              No site matches “{query.trim()}”. IDs run from{" "}
+              {sites[0]?.site_id} to {sites[sites.length - 1]?.site_id}.
+            </li>
+          )}
+          {matches.map((s) => {
+            const excluded = isShorelineExcluded(s, bufferM);
+            return (
+              <li key={s.site_id}>
+                <button
+                  type="button"
+                  onClick={() => pick(s)}
+                  className="hover:bg-accent flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors"
+                >
+                  <span
+                    className="size-2 shrink-0 rounded-full"
+                    style={{
+                      background: excluded
+                        ? "var(--muted-foreground)"
+                        : CLASS_HEX[s.suitability_class].light,
+                    }}
+                  />
+                  <span className="tabular font-medium">{s.site_id}</span>
+                  <span className="text-muted-foreground min-w-0 truncate">
+                    {s.barangay ?? ""}
+                  </span>
+                  <span className="text-muted-foreground tabular ml-auto shrink-0 text-[10px]">
+                    {formatScore(s.score)}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 

@@ -11,6 +11,12 @@ import {
 import type { Theme } from "@/hooks/use-theme";
 import type { LngLatBounds } from "@/lib/geo";
 import { framePadding } from "@/lib/map-view";
+import {
+  facilityKindLabel,
+  facilityName,
+  facilityTitle,
+  type FacilityCollection,
+} from "@/lib/facilities";
 import type { AppMode, Site, SuitabilityClass } from "@/types/polaris";
 import {
   CLASS_HEX,
@@ -229,67 +235,140 @@ export function FacilitiesLayer({
   return null;
 }
 
+/** Half-width of the facility ring hit box, in pixels. */
+const FACILITY_SLOP_PX = 4;
+
+/**
+ * The facility ring under `point`, or `undefined`. A ring is only a few pixels
+ * across at district zoom, so this tests a small box and takes the ring nearest
+ * the cursor. Hover, click and the site card's deferral all route through here,
+ * so whichever card is showing is the thing a click acts on.
+ */
+export function pickFacility(
+  map: MapLibreGL.Map,
+  point: MapLibreGL.Point,
+): MapLibreGL.MapGeoJSONFeature | undefined {
+  if (!map.getLayer("facility-points")) return undefined;
+  if (map.getLayoutProperty("facility-points", "visibility") === "none") {
+    return undefined;
+  }
+
+  const box = [
+    [point.x - FACILITY_SLOP_PX, point.y - FACILITY_SLOP_PX],
+    [point.x + FACILITY_SLOP_PX, point.y + FACILITY_SLOP_PX],
+  ] as [MapLibreGL.PointLike, MapLibreGL.PointLike];
+
+  let best: MapLibreGL.MapGeoJSONFeature | undefined;
+  let bestDistance = Infinity;
+  for (const feature of map.queryRenderedFeatures(box, {
+    layers: ["facility-points"],
+  })) {
+    if (feature.geometry.type !== "Point") continue;
+    const screen = map.project(feature.geometry.coordinates as [number, number]);
+    const d = (screen.x - point.x) ** 2 + (screen.y - point.y) ** 2;
+    if (d < bestDistance) {
+      bestDistance = d;
+      best = feature;
+    }
+  }
+  return best;
+}
+
+/** The `fid` of a facility that opens a details dialog, else null. */
+export function clickableFacilityId(
+  feature: MapLibreGL.MapGeoJSONFeature | undefined,
+): number | null {
+  const props = feature?.properties;
+  return props?.has_details === 1 && typeof props.fid === "number"
+    ? props.fid
+    : null;
+}
+
 /**
  * Hover readout for the facility rings.
  *
- * Facilities are reference context, not something you select, so this is a
- * transient popup rather than a click target — it never competes with placing
- * a search centre or opening a site dialog.
+ * Every facility gets this card. Only those with recorded details beyond the
+ * name and type are clickable, and the card says so: a click on the rest falls
+ * through to the map as before, so they never get in the way of placing a
+ * search centre.
  */
-export function FacilityHover({ enabled }: { enabled: boolean }) {
+export function FacilityHover({
+  facilities,
+  enabled,
+}: {
+  facilities: FacilityCollection | null;
+  enabled: boolean;
+}) {
   const { map, isLoaded } = useMap();
 
   useEffect(() => {
-    if (!map || !isLoaded || !enabled) return;
+    if (!map || !isLoaded || !enabled || !facilities) return;
 
     let popup: MapLibreGL.Popup | null = null;
+    let shown: number | null = null;
 
     const clear = () => {
       popup?.remove();
       popup = null;
+      shown = null;
     };
 
     const handleMove = (e: MapLibreGL.MapMouseEvent) => {
-      if (!map.getLayer("facility-points")) return clear();
+      const hit = pickFacility(map, e.point);
+      const fid = hit?.properties?.fid;
+      const feature =
+        typeof fid === "number" ? facilities.features[fid] : undefined;
+      if (!feature) return clear();
+      if (popup && shown === fid) return;
 
-      const hit = map.queryRenderedFeatures(e.point, {
-        layers: ["facility-points"],
-      })[0];
+      const props = feature.properties;
+      const title = facilityTitle(props);
+      const kind = facilityKindLabel(props);
+      const hint = props.has_details
+        ? "Click for details"
+        : "No further details recorded";
 
-      if (!hit) return clear();
+      // Anchored to the ring, not the cursor, so the card holds still.
+      const at = feature.geometry.coordinates as [number, number];
+      // `.maplibregl-popup-content` is stripped to transparent globally, so
+      // the card styling lives here — same vocabulary as <MarkerTooltip>.
+      const html =
+        `<div class="bg-popover text-popover-foreground max-w-56 rounded-lg border px-2.5 py-1.5 shadow-lg">` +
+        `<p class="text-sm font-semibold">${escapeHtml(title)}</p>` +
+        (facilityName(props)
+          ? `<p class="text-muted-foreground text-xs">${escapeHtml(kind)}</p>`
+          : "") +
+        `<p class="text-muted-foreground mt-1 text-[11px]">Existing facility — not a candidate site</p>` +
+        `<p class="text-muted-foreground mt-0.5 text-[11px]">${hint}</p>` +
+        `</div>`;
 
-      const props = hit.properties ?? {};
-      const name = typeof props.name === "string" ? props.name : null;
-      const kind = typeof props.kind === "string" ? props.kind : "Health facility";
-
-      clear();
-      popup = new Popup({
-        closeButton: false,
-        closeOnClick: false,
-        offset: 12,
-        className: "polaris-facility-popup",
-      })
-        .setLngLat(e.lngLat)
-        // `.maplibregl-popup-content` is stripped to transparent globally, so
-        // the card styling lives here — same vocabulary as <MarkerTooltip>.
-        .setHTML(
-          `<div class="bg-popover text-popover-foreground max-w-56 rounded-lg border px-2.5 py-1.5 shadow-lg">` +
-            `<p class="text-sm font-semibold">${escapeHtml(name ?? kind)}</p>` +
-            (name
-              ? `<p class="text-muted-foreground text-xs">${escapeHtml(kind)}</p>`
-              : "") +
-            `<p class="text-muted-foreground mt-1 text-[11px]">Existing facility — not a candidate site</p>` +
-            `</div>`,
-        )
-        .addTo(map);
+      if (popup) {
+        popup.setLngLat(at).setHTML(html);
+      } else {
+        popup = new Popup({
+          closeButton: false,
+          closeOnClick: false,
+          offset: 12,
+          className: "polaris-facility-popup",
+        })
+          .setLngLat(at)
+          .setHTML(html)
+          .addTo(map);
+      }
+      shown = fid as number;
     };
 
     map.on("mousemove", handleMove);
+    map.on("mouseout", clear);
+    // A click may open the details dialog; the card would sit behind it.
+    map.on("click", clear);
     return () => {
       map.off("mousemove", handleMove);
+      map.off("mouseout", clear);
+      map.off("click", clear);
       clear();
     };
-  }, [map, isLoaded, enabled]);
+  }, [map, isLoaded, enabled, facilities]);
 
   return null;
 }
@@ -522,13 +601,7 @@ export function SiteHover({
     const handleMove = (e: MapLibreGL.MapMouseEvent) => {
       // Facilities are drawn over the dot cloud and own their own popup, so
       // whatever is visually on top wins rather than both firing at once.
-      if (
-        map.getLayer("facility-points") &&
-        map.queryRenderedFeatures(e.point, { layers: ["facility-points"] })
-          .length > 0
-      ) {
-        return clear();
-      }
+      if (pickFacility(map, e.point)) return clear();
 
       const hit = pickSiteDot(map, e.point, HOVER_LAYERS);
       if (!hit) return clear();
@@ -647,10 +720,12 @@ function siteCardHtml(
 export function MapInteractions({
   pickLayers,
   onSelectSite,
+  onSelectFacility,
   onPickLocation,
 }: {
   pickLayers: readonly string[];
   onSelectSite: (siteId: string) => void;
+  onSelectFacility: (fid: number) => void;
   onPickLocation: (lat: number, lon: number) => void;
 }) {
   const { map, isLoaded } = useMap();
@@ -658,7 +733,21 @@ export function MapInteractions({
   useEffect(() => {
     if (!map || !isLoaded) return;
 
+    /**
+     * Facility first: when a ring is under the cursor its card is the one
+     * showing (the site card defers to it), so the click goes where the card
+     * says. Rings without details fall through, exactly as before.
+     */
+    const facilityAt = (point: MapLibreGL.Point) =>
+      clickableFacilityId(pickFacility(map, point));
+
     const handleClick = (e: MapLibreGL.MapMouseEvent) => {
+      const fid = facilityAt(e.point);
+      if (fid !== null) {
+        onSelectFacility(fid);
+        return;
+      }
+
       const siteId = pickSiteDot(map, e.point, pickLayers)?.properties?.site_id;
 
       if (typeof siteId === "string") {
@@ -669,9 +758,10 @@ export function MapInteractions({
     };
 
     const handleMove = (e: MapLibreGL.MapMouseEvent) => {
-      map.getCanvas().style.cursor = pickSiteDot(map, e.point, pickLayers)
-        ? "pointer"
-        : "crosshair";
+      map.getCanvas().style.cursor =
+        facilityAt(e.point) !== null || pickSiteDot(map, e.point, pickLayers)
+          ? "pointer"
+          : "crosshair";
     };
 
     map.on("click", handleClick);
@@ -683,7 +773,7 @@ export function MapInteractions({
       map.off("mousemove", handleMove);
       if (map.getCanvas()) map.getCanvas().style.cursor = "";
     };
-  }, [map, isLoaded, pickLayers, onSelectSite, onPickLocation]);
+  }, [map, isLoaded, pickLayers, onSelectSite, onSelectFacility, onPickLocation]);
 
   return null;
 }
