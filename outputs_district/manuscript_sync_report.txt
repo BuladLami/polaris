@@ -1,6 +1,6 @@
 ==============================================================================
   POLARIS — MANUSCRIPT SYNCHRONISATION REPORT
-  Generated 2026-08-14T14:01:53+00:00
+  Generated 2026-11-03T03:52:21+00:00
 ==============================================================================
   Every figure below replaces one currently printed in the manuscript.
   The previous single-barangay run is superseded IN FULL. Do not mix figures
@@ -14,7 +14,7 @@
   Grid spacing                       : 250 m
   Building-density radius            : 300 m
   Candidate sites  n                 : 1,502
-  Raw OSM elements read              : 36,363
+  Raw OSM elements read              : 36,347
   OSM snapshot date                  : 2026-07-29
 
 ------------------------------------------------------------------------------
@@ -29,7 +29,7 @@
   Thresholds                         : τ₁=0.25, τ₂=0.4, τ₃=0.6
   Raw hazard-integrated score range  : [-0.1104, 0.3602]
   Raw service-only score range       : [0.0123, 0.4369]
-  Predicted score range (exported)   : [0.035, 0.904]
+  Predicted score range (exported)   : [0.035, 0.903]
 
 ------------------------------------------------------------------------------
   HARD ELIGIBILITY GATES
@@ -37,47 +37,47 @@
   Shoreline setback (<50 m)          : 16 sites
   High hazard on any layer           : 272 sites (18.1%)
   Ineligible under either gate       : 275 sites (18.3%)
-  Highest-scoring site overall       : TALOMO_0618 (0.904), GATED
-  Highest-scoring eligible site      : TALOMO_0765 (0.823)
+  Highest-scoring site overall       : TALOMO_0618 (0.903), GATED
+  Highest-scoring eligible site      : TALOMO_0765 (0.824)
 
 ------------------------------------------------------------------------------
   SUITABILITY CLASSIFICATION
 ------------------------------------------------------------------------------
   Highly Suitable            37  (  2.5%)
-  Moderately Suitable       306  ( 20.4%)
-  Low Suitability           919  ( 61.2%)
-  Not Suitable              240  ( 16.0%)
+  Moderately Suitable       307  ( 20.4%)
+  Low Suitability           920  ( 61.3%)
+  Not Suitable              238  ( 15.8%)
 
 ------------------------------------------------------------------------------
   TIER 2 — MODEL ACCURACY
 ------------------------------------------------------------------------------
   Estimator                          : Random Forest
   Hyperparameters                    : {'max_depth': None, 'max_features': 1.0, 'min_samples_split': 2, 'n_estimators': 500}
-  MAE (F10)                          : 0.0130
-  RMSE (F11)                         : 0.0204   (RMSE/MAE = 1.57)
-  R² (F12)                           : 0.9639
-  OOB R² (F13)                       : 0.9471
-  5-fold CV R²                       : 0.9433 ± 0.0157
-  Reconstruction |ŷ − S′| mean       : 0.0068; 1.40% deviate > 0.05
+  MAE (F10)                          : 0.0129
+  RMSE (F11)                         : 0.0205   (RMSE/MAE = 1.58)
+  R² (F12)                           : 0.9636
+  OOB R² (F13)                       : 0.9469
+  5-fold CV R²                       : 0.9431 ± 0.0157
+  Reconstruction |ŷ − S′| mean       : 0.0067; 1.33% deviate > 0.05
 
   Objective C — linear weighted overlay on the same partition:
      OLS R²                          : 1.000000
-     Random Forest R²                : 0.963859
+     Random Forest R²                : 0.963624
      Report the Random Forest as a faithful surrogate, NOT as outperforming
      the linear baseline. The target is linear by construction.
 
   Feature importance (MDI / permutation ΔMSE / specified weight):
-     building_density             0.4069 / 0.0083 / 0.40
-     road_accessibility           0.2055 / 0.0063 / 0.25
-     facility_distance            0.1442 / 0.0055 / 0.15
-     flood_susceptibility         0.1144 / 0.0025 / 0.08
-     landslide_susceptibility     0.0700 / 0.0023 / 0.07
-     storm_surge_susceptibility   0.0589 / 0.0018 / 0.05
+     building_density             0.4065 / 0.0083 / 0.40
+     road_accessibility           0.2059 / 0.0064 / 0.25
+     facility_distance            0.1444 / 0.0055 / 0.15
+     flood_susceptibility         0.1147 / 0.0025 / 0.08
+     landslide_susceptibility     0.0698 / 0.0022 / 0.07
+     storm_surge_susceptibility   0.0587 / 0.0018 / 0.05
 
 ------------------------------------------------------------------------------
   TIER 2 — INTERNAL HAZARD SENSITIVITY ABLATION
 ------------------------------------------------------------------------------
-  Spearman ρ (F16)                   : 0.7366
+  Spearman ρ (F16)                   : 0.7367
   Classification change C (F17)      : 27.43% (412 sites)
   Mean deviation Δ̄ (F18, raw)        : 0.0222
   Jaccard J(N) (F19)                 : N=5: 0.250, N=10: 0.429, N=20: 0.667, N=50: 0.587
