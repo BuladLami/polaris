@@ -288,16 +288,19 @@ export function clickableFacilityId(
  * Hover readout for the facility rings.
  *
  * Every facility gets this card. Only those with recorded details beyond the
- * name and type are clickable, and the card says so: a click on the rest falls
- * through to the map as before, so they never get in the way of placing a
- * search centre.
+ * name and type are clickable, and only in Recommend mode, and the card says
+ * so: a click on the rest falls through to the map as before, so they never get
+ * in the way of placing a search centre or evaluating a point.
  */
 export function FacilityHover({
   facilities,
   enabled,
+  clickable,
 }: {
   facilities: FacilityCollection | null;
   enabled: boolean;
+  /** Whether a click opens the details (Recommend mode) or evaluates (Evaluate). */
+  clickable: boolean;
 }) {
   const { map, isLoaded } = useMap();
 
@@ -324,9 +327,11 @@ export function FacilityHover({
       const props = feature.properties;
       const title = facilityTitle(props);
       const kind = facilityKindLabel(props);
-      const hint = props.has_details
-        ? "Click for details"
-        : "No further details recorded";
+      const hint = !clickable
+        ? "Click to evaluate this location"
+        : props.has_details
+          ? "Click for details"
+          : "No further details recorded";
 
       // Anchored to the ring, not the cursor, so the card holds still.
       const at = feature.geometry.coordinates as [number, number];
@@ -368,7 +373,7 @@ export function FacilityHover({
       map.off("click", clear);
       clear();
     };
-  }, [map, isLoaded, enabled, facilities]);
+  }, [map, isLoaded, enabled, clickable, facilities]);
 
   return null;
 }
@@ -719,11 +724,14 @@ function siteCardHtml(
  */
 export function MapInteractions({
   pickLayers,
+  facilityClicks,
   onSelectSite,
   onSelectFacility,
   onPickLocation,
 }: {
   pickLayers: readonly string[];
+  /** False in Evaluate mode, where every click evaluates, as with site dots. */
+  facilityClicks: boolean;
   onSelectSite: (siteId: string) => void;
   onSelectFacility: (fid: number) => void;
   onPickLocation: (lat: number, lon: number) => void;
@@ -739,7 +747,7 @@ export function MapInteractions({
      * says. Rings without details fall through, exactly as before.
      */
     const facilityAt = (point: MapLibreGL.Point) =>
-      clickableFacilityId(pickFacility(map, point));
+      facilityClicks ? clickableFacilityId(pickFacility(map, point)) : null;
 
     const handleClick = (e: MapLibreGL.MapMouseEvent) => {
       const fid = facilityAt(e.point);
@@ -773,7 +781,7 @@ export function MapInteractions({
       map.off("mousemove", handleMove);
       if (map.getCanvas()) map.getCanvas().style.cursor = "";
     };
-  }, [map, isLoaded, pickLayers, onSelectSite, onSelectFacility, onPickLocation]);
+  }, [map, isLoaded, pickLayers, facilityClicks, onSelectSite, onSelectFacility, onPickLocation]);
 
   return null;
 }

@@ -131,6 +131,7 @@ export function SuitabilityMap({
       <DistrictView bounds={districtBounds} />
       <MapInteractions
         pickLayers={pickLayers}
+        facilityClicks={mode === "recommendation"}
         onSelectSite={onSelectSite}
         onSelectFacility={onSelectFacility}
         onPickLocation={onPickLocation}
@@ -161,7 +162,11 @@ export function SuitabilityMap({
         theme={theme}
         visible={showFacilities}
       />
-      <FacilityHover facilities={facilities} enabled={showFacilities} />
+      <FacilityHover
+        facilities={facilities}
+        enabled={showFacilities}
+        clickable={mode === "recommendation"}
+      />
       <ResultDotsLayer data={resultGeoJson} theme={theme} />
       {/* Mounted after the dot layers so both are present to hit-test. */}
       <SiteHover
