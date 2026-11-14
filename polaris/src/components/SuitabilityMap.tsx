@@ -55,8 +55,6 @@ export interface SuitabilityMapProps {
   onSelectSite: (siteId: string) => void;
   /** Opens a facility's details; only facilities that have any call it. */
   onSelectFacility: (fid: number) => void;
-  /** Site picked in "Find a site", pinned until the search is cleared. */
-  foundSite?: Site | null;
   onPickLocation: (lat: number, lon: number) => void;
   className?: string;
 }
@@ -81,7 +79,6 @@ export function SuitabilityMap({
   evalPoint,
   onSelectSite,
   onSelectFacility,
-  foundSite = null,
   onPickLocation,
   className,
 }: SuitabilityMapProps) {
@@ -218,43 +215,6 @@ export function SuitabilityMap({
           </MarkerTooltip>
         </MapMarker>
       )}
-
-      {/* Site found by id. Skipped when it is already a numbered marker. */}
-      {foundSite &&
-        !topRecommendations.some((r) => r.site_id === foundSite.site_id) && (
-          <MapMarker
-            longitude={foundSite.longitude}
-            latitude={foundSite.latitude}
-            onClick={() => onSelectSite(foundSite.site_id)}
-          >
-            <MarkerContent>
-              <div className="relative grid cursor-pointer place-items-center">
-                <span className="bg-primary/35 pointer-events-none absolute size-7 rounded-full animate-pulse-ring" />
-                <MapPin className="fill-primary text-primary-foreground size-7 drop-shadow-lg" />
-              </div>
-            </MarkerContent>
-            <MarkerTooltip>
-              <div className="bg-popover text-popover-foreground max-w-56 rounded-lg border px-3 py-2 shadow-xl">
-                <p className="text-sm font-semibold">{foundSite.site_id}</p>
-                {foundSite.barangay && (
-                  <p className="text-muted-foreground text-xs">{foundSite.barangay}</p>
-                )}
-                <p className="mt-1 text-xs">
-                  Score{" "}
-                  <span className="tabular font-semibold">
-                    {formatScore(foundSite.score)}
-                  </span>{" "}
-                  <span className="text-muted-foreground">
-                    ({foundSite.suitability_class})
-                  </span>
-                </p>
-                <p className="text-muted-foreground mt-1 text-[11px]">
-                  Click for the full breakdown
-                </p>
-              </div>
-            </MarkerTooltip>
-          </MapMarker>
-        )}
 
       {/* Top-N recommended sites (panel revision #4). Added lowest rank first, so
           where neighbouring sites overlap the better one stays on top. */}

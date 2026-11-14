@@ -52,8 +52,6 @@ export default function App() {
   const [scoreGuideOpen, setScoreGuideOpen] = useState(false);
   const [datasetInfoOpen, setDatasetInfoOpen] = useState(false);
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
-  /** Site picked in "Find a site"; pinned on the map until cleared. */
-  const [foundSiteId, setFoundSiteId] = useState<string | null>(null);
   /** `fid` of the facility whose details are open, if any. */
   const [selectedFacilityId, setSelectedFacilityId] = useState<number | null>(
     null,
@@ -192,17 +190,6 @@ export default function App() {
     ? (siteIndex.get(selectedSiteId) ?? null)
     : null;
 
-  const foundSite = foundSiteId ? (siteIndex.get(foundSiteId) ?? null) : null;
-
-  const handleFindSite = useCallback(
-    (site: Site) => {
-      setFoundSiteId(site.site_id);
-      setSelectedSiteId(site.site_id);
-      flyTo(site.latitude, site.longitude, 16.5);
-    },
-    [flyTo],
-  );
-
   const selectedFacility =
     selectedFacilityId !== null
       ? (bundle?.facilities?.features[selectedFacilityId] ?? null)
@@ -237,7 +224,6 @@ export default function App() {
   const handleClear = useCallback(() => {
     clearActiveMode();
     setSelectedSiteId(null);
-    setFoundSiteId(null);
     showDistrict();
   }, [clearActiveMode, showDistrict]);
 
@@ -253,7 +239,6 @@ export default function App() {
     clearSearch();
     clearEvaluation();
     setSelectedSiteId(null);
-    setFoundSiteId(null);
     setShowWelcome(true);
     showDistrict();
   }, [clearSearch, clearEvaluation, showDistrict]);
@@ -281,7 +266,6 @@ export default function App() {
     if (!pendingMode) return;
     clearActiveMode();
     setSelectedSiteId(null);
-    setFoundSiteId(null);
     setMode(pendingMode);
     setPendingMode(null);
     showDistrict();
@@ -363,7 +347,6 @@ export default function App() {
               evalPoint={evaluation.point}
               onSelectSite={setSelectedSiteId}
               onSelectFacility={setSelectedFacilityId}
-              foundSite={foundSite}
               onPickLocation={handlePickLocation}
             />
 
@@ -389,9 +372,6 @@ export default function App() {
                 <SearchPanel
                   mode={mode}
                   barangays={bundle.barangays}
-                  sites={sites}
-                  bufferM={bufferM}
-                  onFindSite={handleFindSite}
                   latitude={isRecommendation ? search.latitude : evaluation.latitude}
                   longitude={
                     isRecommendation ? search.longitude : evaluation.longitude
