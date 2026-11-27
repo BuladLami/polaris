@@ -139,6 +139,7 @@ export function SuitabilityMap({
       <DistrictView bounds={districtBounds} />
       <MapInteractions
         mode={mode}
+        onSelectSite={onSelectSite}
         onSelectFacility={onSelectFacility}
         onPickLocation={onPickLocation}
       />

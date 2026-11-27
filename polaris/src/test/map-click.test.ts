@@ -1,41 +1,57 @@
 /**
- * Recommend-mode click conflict (post-defense): a map click never opens a
- * site. In Recommend mode it places the search centre, even over a site dot or
- * tile; in Evaluate mode it evaluates the point.
+ * Map clicks (post-defense). Recommend mode: a site dot opens its breakdown,
+ * a facility ring its card, open map places the search centre. Evaluate mode:
+ * every click evaluates the point.
  */
 import { describe, expect, it } from "vitest";
 
 import {
-  facilityClicksEnabled,
+  CLICKABLE_SITE_LAYERS,
+  objectClicksEnabled,
   resolveMapClick,
   siteHoverHint,
 } from "@/components/map/map-click";
 
+const none = { facilityId: null, siteId: null };
+
 describe("Recommend mode", () => {
-  it("places the search centre on a click over a site dot or tile", () => {
-    // Site hits are not an input at all: whatever is under the cursor, a click
-    // with no facility ring under it is a point.
-    expect(resolveMapClick("recommendation", null)).toEqual({ kind: "point" });
+  it("opens the site's breakdown when a site dot is clicked", () => {
+    expect(resolveMapClick("recommendation", { ...none, siteId: "TALOMO_0349" })).toEqual({
+      kind: "site",
+      siteId: "TALOMO_0349",
+    });
   });
 
-  it("still opens a facility's details when its ring is clicked", () => {
-    expect(facilityClicksEnabled("recommendation")).toBe(true);
-    expect(resolveMapClick("recommendation", 7)).toEqual({ kind: "facility", fid: 7 });
+  it("places the search centre when the click is on open map", () => {
+    expect(resolveMapClick("recommendation", none)).toEqual({ kind: "point" });
   });
 
-  it("tells the reader on the hover card that a click places the search centre", () => {
-    expect(siteHoverHint("recommendation")).toBe("Click to place the search centre here");
+  it("opens a facility's details when its ring is clicked, even over a dot", () => {
+    expect(objectClicksEnabled("recommendation")).toBe(true);
+    expect(resolveMapClick("recommendation", { facilityId: 7, siteId: "TALOMO_0349" })).toEqual({
+      kind: "facility",
+      fid: 7,
+    });
+  });
+
+  it("takes clicks on the dots only, never on a site's tile", () => {
+    expect([...CLICKABLE_SITE_LAYERS]).toEqual(["result-dots", "site-dots"]);
+  });
+
+  it("tells the reader on the hover card that a click opens the breakdown", () => {
+    expect(siteHoverHint("recommendation")).toBe("Click for the full breakdown");
   });
 });
 
 describe("Evaluate mode", () => {
-  it("evaluates the clicked point, over a site or not", () => {
-    expect(resolveMapClick("evaluation", null)).toEqual({ kind: "point" });
+  it("evaluates the clicked point, over a site dot or not", () => {
+    expect(objectClicksEnabled("evaluation")).toBe(false);
+    expect(resolveMapClick("evaluation", { ...none, siteId: "TALOMO_0349" })).toEqual({ kind: "point" });
+    expect(resolveMapClick("evaluation", none)).toEqual({ kind: "point" });
   });
 
   it("evaluates the point even over a facility ring", () => {
-    expect(facilityClicksEnabled("evaluation")).toBe(false);
-    expect(resolveMapClick("evaluation", 7)).toEqual({ kind: "point" });
+    expect(resolveMapClick("evaluation", { facilityId: 7, siteId: null })).toEqual({ kind: "point" });
   });
 
   it("tells the reader a click evaluates the site", () => {
