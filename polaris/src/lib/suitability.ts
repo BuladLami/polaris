@@ -306,8 +306,25 @@ export function formatMetres(m: number): string {
   return m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${Math.round(m)} m`;
 }
 
-export function formatScore(score: number): string {
-  return score.toFixed(3);
+/**
+ * A score for display: 3 decimals, unless rounding to 3 would put the shown
+ * number in a different class from the score itself (0.2497 shown as "0.250"
+ * while the site is Not Suitable). Then it shows 4 decimals ("0.2497"), or
+ * more in the rare case 4 would still cross. The stored score is never changed.
+ */
+export function formatScore(score: number, t = DEFAULT_THRESHOLDS): string {
+  if (!Number.isFinite(score)) return "—";
+  const cls = classifyScore(score, t);
+  for (let digits = 3; digits <= 6; digits++) {
+    const text = score.toFixed(digits);
+    if (classifyScore(Number(text), t) === cls) return text;
+  }
+  return String(score);
+}
+
+/** True when `formatScore` needs more than 3 decimals to keep the class honest. */
+export function needsExtraDecimals(score: number, t = DEFAULT_THRESHOLDS): boolean {
+  return formatScore(score, t).length > score.toFixed(3).length;
 }
 
 /* ------------------------------------------------------------------ */

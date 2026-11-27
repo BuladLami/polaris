@@ -9,6 +9,8 @@ import {
   classifyScore,
   classRange,
   DEFAULT_THRESHOLDS,
+  formatScore,
+  needsExtraDecimals,
 } from "@/lib/suitability";
 
 import { loadDataset, readText, REPO_ROOT } from "./data";
@@ -86,5 +88,34 @@ describe("the pipeline classifier", () => {
     expect(code).toContain(
       "EXPORT_CLASS_LABELS = {'Highly Suitable', 'Suitable', 'Low Suitability', 'Not Suitable'}",
     );
+  });
+});
+
+describe("formatScore near a class boundary", () => {
+  it("keeps 3 decimals when rounding stays in the same class", () => {
+    expect(formatScore(0.2341)).toBe("0.234");
+    expect(formatScore(0.25)).toBe("0.250");
+    expect(formatScore(0.4007)).toBe("0.401");
+    expect(formatScore(0.6)).toBe("0.600");
+  });
+
+  it("shows 4 decimals when 3 would round onto or across a threshold", () => {
+    expect(formatScore(0.2497)).toBe("0.2497");
+    expect(formatScore(0.3996)).toBe("0.3996");
+    expect(formatScore(0.5999)).toBe("0.5999");
+  });
+
+  it("never changes the class a reader would infer from the number", () => {
+    for (const s of loadDataset().sites) {
+      expect(classifyScore(Number(formatScore(s.score)))).toBe(s.suitability_class);
+    }
+  });
+
+  it("affects exactly TALOMO_0895 and TALOMO_1176 in the deployed dataset", () => {
+    const hit = loadDataset().sites.filter((s) => needsExtraDecimals(s.score));
+    expect(hit.map((s) => [s.site_id, formatScore(s.score)])).toEqual([
+      ["TALOMO_0895", "0.2497"],
+      ["TALOMO_1176", "0.2497"],
+    ]);
   });
 });
