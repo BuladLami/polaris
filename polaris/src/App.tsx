@@ -339,6 +339,10 @@ export default function App() {
               coastline={bundle.coastline}
               facilities={bundle.facilities}
               tiles={bundle.tiles}
+              highlightSiteId={
+                selectedSiteId ??
+                (isRecommendation ? null : (evaluation.result?.site.site_id ?? null))
+              }
               shorelineBufferM={bufferM}
               showShorelineBuffer={showShorelineBuffer}
               showAllSites={showAllSites}

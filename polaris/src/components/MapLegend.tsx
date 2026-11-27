@@ -33,7 +33,7 @@ export function MapLegend({
   excludedCount,
   tiles = false,
 }: {
-  /** True when sites are drawn as tiles: the swatches are squares to match. */
+  /** True when the tile file loaded: shows the tile note. */
   tiles?: boolean;
   thresholds?: Thresholds;
   shorelineBufferM: number;
@@ -49,9 +49,6 @@ export function MapLegend({
   excludedCount: number;
 }) {
   const [open, setOpen] = useState(mapKeyStartsOpen);
-  // Square swatches for tiles, round ones for the dot fallback — the key
-  // draws each site the way the map does.
-  const swatchShape = tiles ? "rounded-[2px]" : "rounded-full";
 
   return (
     <div className="pointer-events-none absolute bottom-4 left-4 z-10 max-w-[min(24rem,calc(100%-2rem))]">
@@ -93,7 +90,7 @@ export function MapLegend({
                       <span className="flex min-w-0 items-center gap-2">
                         <span
                           data-legend-swatch
-                          className={cn("size-2.5 shrink-0", swatchShape)}
+                          className="size-2.5 shrink-0 rounded-full"
                           style={{
                             backgroundColor: `var(${CLASS_COLOR_VAR[cls]})`,
                           }}
@@ -106,9 +103,7 @@ export function MapLegend({
                     </li>
                   ))}
                   <li className="flex items-center gap-2 text-sm">
-                    <span
-                      className={cn("bg-suit-excluded size-2.5 shrink-0", swatchShape)}
-                    />
+                    <span className="bg-suit-excluded size-2.5 shrink-0 rounded-full" />
                     <span className="text-muted-foreground truncate">
                       Ruled out — within {shorelineBufferM} m of the shoreline
                     </span>

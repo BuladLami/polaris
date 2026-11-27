@@ -98,26 +98,18 @@ describe("tilesToFeatureCollection (the join)", () => {
 describe("layer stacking", () => {
   const index = (id: string) => (LAYER_ORDER as readonly string[]).indexOf(id);
 
-  it("keeps the district tiles under everything else POLARIS draws", () => {
-    expect(index("site-tiles")).toBe(0);
-    expect(index("site-tiles-outline")).toBe(1);
-  });
-
-  it("keeps the search ring, the shoreline band and facilities above the result tiles", () => {
-    for (const above of ["search-radius-line", "shoreline-buffer-band", "facility-points"]) {
-      expect(index(above)).toBeGreaterThan(index("result-tiles-outline"));
+  it("draws a highlighted tile under the dots, so its dot stays visible in the middle", () => {
+    for (const above of ["site-dots", "result-dots", "facility-points", "shoreline-buffer-band"]) {
+      expect(index(above)).toBeGreaterThan(index("highlight-tile-outline"));
     }
-    // The radius fill and the district outline's faint fill sit below the
-    // result tiles, so neither tints them.
-    expect(index("search-radius-fill")).toBeLessThan(index("result-tiles"));
-    expect(index("talomo-boundary-fill")).toBeLessThan(index("result-tiles"));
+    expect(index("highlight-tile")).toBeLessThan(index("highlight-tile-outline"));
   });
 
   it("inserts a late layer beneath the first layer that belongs above it", () => {
-    const onMap = new Set(["talomo-boundary-line", "facility-points", "shoreline-buffer-band"]);
+    const onMap = new Set(["talomo-boundary-line", "site-dots", "facility-points"]);
     const has = (id: string) => onMap.has(id);
-    expect(beforeIdFor("site-tiles", has)).toBe("talomo-boundary-line");
-    expect(beforeIdFor("result-tiles", has)).toBe("shoreline-buffer-band");
+    expect(beforeIdFor("highlight-tile", has)).toBe("site-dots");
+    expect(beforeIdFor("search-radius-fill", has)).toBe("site-dots");
     expect(beforeIdFor("result-dots", has)).toBeUndefined();
     expect(beforeIdFor("not-a-polaris-layer", has)).toBeUndefined();
   });

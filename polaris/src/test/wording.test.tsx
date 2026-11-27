@@ -45,11 +45,8 @@ describe("map key", () => {
     expect(legend(true)).toContain(html(TILE_NOTE));
   });
 
-  it("drops the tile note and uses round swatches when sites are drawn as dots", () => {
-    const dots = legend(false);
-    expect(dots).not.toContain(html(TILE_NOTE));
-    expect(dots).not.toContain("rounded-[2px]");
-    expect(legend(true)).toContain("rounded-[2px]");
+  it("drops the tile note when the tile file is missing", () => {
+    expect(legend(false)).not.toContain(html(TILE_NOTE));
   });
 
   it("lists the four classes with their ranges", () => {

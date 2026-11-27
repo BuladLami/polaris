@@ -479,83 +479,16 @@ export function SiteDotsLayer({
 }
 
 /* ================================================================== */
-/*  Candidate site tiles                                               */
+/*  Highlighted site tile                                              */
 /* ================================================================== */
 
 /**
- * Thin seam between neighbouring tiles. Zero while a tile is only a few pixels
- * across (a 250 m tile is ~7 px at zoom 11), so the district reads as one
- * continuous surface there instead of a mesh of lines; it fades in once each
- * tile is large enough to be told apart from its neighbours.
+ * The 250 m tile of the site under the pointer, and of the site that was
+ * clicked. The map still shows sites as dots; this only appears on hover or
+ * selection, to show the area that dot stands for. It sits under the dots
+ * (see LAYER_ORDER), so the dot itself stays visible in the middle.
  */
-const TILE_OUTLINE_WIDTH = [
-  "interpolate",
-  ["linear"],
-  ["zoom"],
-  11.5,
-  0,
-  13,
-  0.5,
-  16,
-  1,
-] as MapLibreGL.ExpressionSpecification;
-
-function tileOutlineColor(theme: Theme): string {
-  return theme === "dark" ? "#0b1120" : "#ffffff";
-}
-
-/**
- * Every scored site as the 250 m grid cell it stands for, coloured by class.
- *
- * Tiles replace the dots because a site is not a point: its score describes the
- * whole cell around the grid point it was measured at, and a facility could go
- * anywhere suitable inside that cell. They are drawn at every zoom. Neighbouring
- * tiles share their edges exactly, so even at the widest zoom, where a tile is
- * two or three pixels across, they merge into one continuous colour surface —
- * which reads better than dots at that size, since dots leave gaps and blink in
- * and out as they shrink below a pixel.
- */
-export function SiteTilesLayer({
-  data,
-  theme,
-  dimmed,
-}: {
-  data: FeatureCollection<TileGeometry, SitePointProperties> | null;
-  theme: Theme;
-  dimmed: boolean;
-}) {
-  const layers = useMemo(
-    () => [
-      {
-        id: "site-tiles",
-        type: "fill" as const,
-        paint: {
-          "fill-color": classColorExpression(theme),
-          "fill-opacity": dimmed ? 0.18 : 0.55,
-        },
-      },
-      {
-        id: "site-tiles-outline",
-        type: "line" as const,
-        paint: {
-          "line-color": tileOutlineColor(theme),
-          "line-width": TILE_OUTLINE_WIDTH,
-          "line-opacity": dimmed ? 0.25 : 0.6,
-        },
-      },
-    ],
-    [theme, dimmed],
-  );
-
-  useMapSource("site-tiles-source", data, layers);
-  return null;
-}
-
-/**
- * The tiles of the sites inside the current search radius, drawn stronger than
- * the district-wide layer with a crisp edge, so the result set stands out.
- */
-export function ResultTilesLayer({
+export function HighlightTileLayer({
   data,
   theme,
 }: {
@@ -565,37 +498,27 @@ export function ResultTilesLayer({
   const layers = useMemo(
     () => [
       {
-        id: "result-tiles",
+        id: "highlight-tile",
         type: "fill" as const,
         paint: {
           "fill-color": classColorExpression(theme),
-          "fill-opacity": 0.72,
+          "fill-opacity": 0.3,
         },
       },
       {
-        id: "result-tiles-outline",
+        id: "highlight-tile-outline",
         type: "line" as const,
         paint: {
-          "line-color": tileOutlineColor(theme),
-          "line-width": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            11,
-            0.4,
-            14,
-            1,
-            17,
-            1.6,
-          ] as MapLibreGL.ExpressionSpecification,
-          "line-opacity": 0.85,
+          "line-color": classColorExpression(theme),
+          "line-width": 1.6,
+          "line-opacity": 0.95,
         },
       },
     ],
     [theme],
   );
 
-  useMapSource("result-tiles-source", data, layers);
+  useMapSource("highlight-tile-source", data, layers);
   return null;
 }
 
@@ -608,7 +531,7 @@ export function ResultTilesLayer({
  * Tiles are the normal rendering; the dot layers exist only when the tile file
  * is missing, and a layer that is not on the map is simply skipped.
  */
-const HOVER_LAYERS = ["result-tiles", "result-dots", "site-tiles", "site-dots"] as const;
+const HOVER_LAYERS = ["result-dots", "site-dots"] as const;
 
 /** Half-width of the dot hit box, in pixels. */
 const HIT_SLOP_PX = 6;
@@ -681,6 +604,7 @@ export function SiteHover({
   theme,
   pickLayers,
   mode,
+  onHoverSite,
 }: {
   sites: readonly Site[];
   bufferM: number;
@@ -688,8 +612,12 @@ export function SiteHover({
   /** Layers whose dots open the details dialog — drives the card's hint line. */
   pickLayers: readonly string[];
   mode: AppMode;
+  /** Told which site the pointer is over (null when none), to show its tile. */
+  onHoverSite?: (siteId: string | null) => void;
 }) {
   const { map, isLoaded } = useMap();
+  const onHoverRef = useRef(onHoverSite);
+  onHoverRef.current = onHoverSite;
 
   /** The dot features carry only what paint needs; hover wants the record. */
   const byId = useMemo(
@@ -703,11 +631,18 @@ export function SiteHover({
     let popup: MapLibreGL.Popup | null = null;
     /** `${site_id}|${layer}` of what the popup currently shows, if anything. */
     let shown: string | null = null;
+    let hoveredId: string | null = null;
+    const setHovered = (id: string | null) => {
+      if (id === hoveredId) return;
+      hoveredId = id;
+      onHoverRef.current?.(id);
+    };
 
     const clear = () => {
       popup?.remove();
       popup = null;
       shown = null;
+      setHovered(null);
     };
 
     const handleMove = (e: MapLibreGL.MapMouseEvent) => {
@@ -722,18 +657,13 @@ export function SiteHover({
       const site = typeof siteId === "string" ? byId.get(siteId) : undefined;
       if (!site) return clear();
 
+      setHovered(site.site_id);
       const key = `${site.site_id}|${hit.layer.id}`;
       if (popup && key === shown) return;
 
-      // The card holds still while the pointer moves within one site. A dot is
-      // small, so its card is anchored to the site itself. A tile can be
-      // hundreds of pixels across when zoomed in, so its card is anchored where
-      // the pointer entered the tile — near the cursor — and stays there until
-      // the pointer crosses into another tile.
-      const at: [number, number] =
-        hit.layer.type === "fill"
-          ? [e.lngLat.lng, e.lngLat.lat]
-          : [site.longitude, site.latitude];
+      // Anchored to the site, not the cursor: the card then sits still while
+      // the pointer moves within a dot instead of jittering along with it.
+      const at: [number, number] = [site.longitude, site.latitude];
       const html = siteCardHtml(
         site,
         bufferM,
