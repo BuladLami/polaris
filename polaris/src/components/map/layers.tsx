@@ -26,16 +26,20 @@ import {
   ineligibilityReason,
   isShorelineExcluded,
 } from "@/lib/suitability";
+import type {
+  SitePointProperties,
+  TileGeometry,
+} from "@/components/map/site-features";
+
+export {
+  sitesToFeatureCollection,
+  tilesToFeatureCollection,
+  type SitePointProperties,
+  type TileGeometry,
+} from "@/components/map/site-features";
 
 /** Reference latitude for ground-distance-to-pixel conversions in Talomo. */
 const REF_LAT = 7.05;
-
-const CLASS_INDEX: Record<SuitabilityClass, number> = {
-  "Not Suitable": 0,
-  "Low Suitability": 1,
-  "Moderately Suitable": 2,
-  "Highly Suitable": 3,
-};
 
 /* ================================================================== */
 /*  District boundary                                                  */
@@ -396,36 +400,6 @@ function escapeHtml(s: string): string {
 /*  Candidate site dots                                                */
 /* ================================================================== */
 
-/**
- * Exactly what the dot layers need and nothing more: `cls` and `excluded` are
- * read by the paint expression, `site_id` by the hit test. Everything else a
- * card wants is looked up from the `Site` record by id, so ~3,000 features do
- * not each carry a copy of it.
- */
-export interface SitePointProperties {
-  site_id: string;
-  cls: number;
-  excluded: number;
-}
-
-export function sitesToFeatureCollection(
-  sites: readonly Site[],
-  bufferM: number,
-): FeatureCollection<Point, SitePointProperties> {
-  return {
-    type: "FeatureCollection",
-    features: sites.map((site) => ({
-      type: "Feature",
-      geometry: { type: "Point", coordinates: [site.longitude, site.latitude] },
-      properties: {
-        site_id: site.site_id,
-        cls: CLASS_INDEX[site.suitability_class],
-        excluded: isShorelineExcluded(site, bufferM) ? 1 : 0,
-      },
-    })),
-  };
-}
-
 function classColorExpression(theme: Theme): MapLibreGL.ExpressionSpecification {
   const tone = (c: SuitabilityClass) => CLASS_HEX[c][theme];
   return [
@@ -438,7 +412,7 @@ function classColorExpression(theme: Theme): MapLibreGL.ExpressionSpecification 
       3,
       tone("Highly Suitable"),
       2,
-      tone("Moderately Suitable"),
+      tone("Suitable"),
       1,
       tone("Low Suitability"),
       tone("Not Suitable"),
@@ -505,28 +479,154 @@ export function SiteDotsLayer({
 }
 
 /* ================================================================== */
+/*  Candidate site tiles                                               */
+/* ================================================================== */
+
+/**
+ * Thin seam between neighbouring tiles. Zero while a tile is only a few pixels
+ * across (a 250 m tile is ~7 px at zoom 11), so the district reads as one
+ * continuous surface there instead of a mesh of lines; it fades in once each
+ * tile is large enough to be told apart from its neighbours.
+ */
+const TILE_OUTLINE_WIDTH = [
+  "interpolate",
+  ["linear"],
+  ["zoom"],
+  11.5,
+  0,
+  13,
+  0.5,
+  16,
+  1,
+] as MapLibreGL.ExpressionSpecification;
+
+function tileOutlineColor(theme: Theme): string {
+  return theme === "dark" ? "#0b1120" : "#ffffff";
+}
+
+/**
+ * Every scored site as the 250 m grid cell it stands for, coloured by class.
+ *
+ * Tiles replace the dots because a site is not a point: its score describes the
+ * whole cell around the grid point it was measured at, and a facility could go
+ * anywhere suitable inside that cell. They are drawn at every zoom. Neighbouring
+ * tiles share their edges exactly, so even at the widest zoom, where a tile is
+ * two or three pixels across, they merge into one continuous colour surface —
+ * which reads better than dots at that size, since dots leave gaps and blink in
+ * and out as they shrink below a pixel.
+ */
+export function SiteTilesLayer({
+  data,
+  theme,
+  dimmed,
+}: {
+  data: FeatureCollection<TileGeometry, SitePointProperties> | null;
+  theme: Theme;
+  dimmed: boolean;
+}) {
+  const layers = useMemo(
+    () => [
+      {
+        id: "site-tiles",
+        type: "fill" as const,
+        paint: {
+          "fill-color": classColorExpression(theme),
+          "fill-opacity": dimmed ? 0.18 : 0.55,
+        },
+      },
+      {
+        id: "site-tiles-outline",
+        type: "line" as const,
+        paint: {
+          "line-color": tileOutlineColor(theme),
+          "line-width": TILE_OUTLINE_WIDTH,
+          "line-opacity": dimmed ? 0.25 : 0.6,
+        },
+      },
+    ],
+    [theme, dimmed],
+  );
+
+  useMapSource("site-tiles-source", data, layers);
+  return null;
+}
+
+/**
+ * The tiles of the sites inside the current search radius, drawn stronger than
+ * the district-wide layer with a crisp edge, so the result set stands out.
+ */
+export function ResultTilesLayer({
+  data,
+  theme,
+}: {
+  data: FeatureCollection<TileGeometry, SitePointProperties> | null;
+  theme: Theme;
+}) {
+  const layers = useMemo(
+    () => [
+      {
+        id: "result-tiles",
+        type: "fill" as const,
+        paint: {
+          "fill-color": classColorExpression(theme),
+          "fill-opacity": 0.72,
+        },
+      },
+      {
+        id: "result-tiles-outline",
+        type: "line" as const,
+        paint: {
+          "line-color": tileOutlineColor(theme),
+          "line-width": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            11,
+            0.4,
+            14,
+            1,
+            17,
+            1.6,
+          ] as MapLibreGL.ExpressionSpecification,
+          "line-opacity": 0.85,
+        },
+      },
+    ],
+    [theme],
+  );
+
+  useMapSource("result-tiles-source", data, layers);
+  return null;
+}
+
+/* ================================================================== */
 /*  Site dot hover readout                                             */
 /* ================================================================== */
 
-/** Hover-testable dot layers, topmost first — that is also the hit priority. */
-const HOVER_LAYERS = ["result-dots", "site-dots"] as const;
+/**
+ * Hover-testable site layers, topmost first — that is also the hit priority.
+ * Tiles are the normal rendering; the dot layers exist only when the tile file
+ * is missing, and a layer that is not on the map is simply skipped.
+ */
+const HOVER_LAYERS = ["result-tiles", "result-dots", "site-tiles", "site-dots"] as const;
 
 /** Half-width of the dot hit box, in pixels. */
 const HIT_SLOP_PX = 6;
 
 /**
- * The site dot under `point`, or `undefined` for open map.
+ * The site under `point`, or `undefined` for open map.
  *
- * A background dot is barely 2 px across at district zoom, so an exact point
- * query would demand pixel-perfect aim. This queries a small box instead and
- * resolves it to the dot actually nearest the cursor. `layers` is consulted in
- * order, so an emphasised result dot always wins over the dimmed district dot
- * sitting underneath it.
+ * A tile is hit exactly: the cell under the cursor is the site. A background
+ * dot is barely 2 px across at district zoom, so for the dot fallback an exact
+ * point query would demand pixel-perfect aim; that case queries a small box
+ * instead and resolves it to the dot actually nearest the cursor. `layers` is
+ * consulted in order, so an emphasised result always wins over the dimmed
+ * district layer underneath it.
  *
  * Hover and click both route through here, which is what lets the hover card
  * act as the click affordance: if you can see the card, clicking opens it.
  */
-export function pickSiteDot(
+export function pickSite(
   map: MapLibreGL.Map,
   point: MapLibreGL.Point,
   layers: readonly string[],
@@ -537,7 +637,14 @@ export function pickSiteDot(
   ] as [MapLibreGL.PointLike, MapLibreGL.PointLike];
 
   for (const id of layers) {
-    if (!map.getLayer(id)) continue;
+    const layer = map.getLayer(id);
+    if (!layer) continue;
+
+    if (layer.type === "fill") {
+      const [hit] = map.queryRenderedFeatures(point, { layers: [id] });
+      if (hit) return hit;
+      continue;
+    }
 
     let best: MapLibreGL.MapGeoJSONFeature | undefined;
     let bestDistance = Infinity;
@@ -608,7 +715,7 @@ export function SiteHover({
       // whatever is visually on top wins rather than both firing at once.
       if (pickFacility(map, e.point)) return clear();
 
-      const hit = pickSiteDot(map, e.point, HOVER_LAYERS);
+      const hit = pickSite(map, e.point, HOVER_LAYERS);
       if (!hit) return clear();
 
       const siteId = hit.properties?.site_id;
@@ -618,9 +725,15 @@ export function SiteHover({
       const key = `${site.site_id}|${hit.layer.id}`;
       if (popup && key === shown) return;
 
-      // Anchored to the site, not the cursor: the card then sits still while
-      // the pointer moves within a dot instead of jittering along with it.
-      const at: [number, number] = [site.longitude, site.latitude];
+      // The card holds still while the pointer moves within one site. A dot is
+      // small, so its card is anchored to the site itself. A tile can be
+      // hundreds of pixels across when zoomed in, so its card is anchored where
+      // the pointer entered the tile — near the cursor — and stays there until
+      // the pointer crosses into another tile.
+      const at: [number, number] =
+        hit.layer.type === "fill"
+          ? [e.lngLat.lng, e.lngLat.lat]
+          : [site.longitude, site.latitude];
       const html = siteCardHtml(
         site,
         bufferM,
@@ -756,7 +869,7 @@ export function MapInteractions({
         return;
       }
 
-      const siteId = pickSiteDot(map, e.point, pickLayers)?.properties?.site_id;
+      const siteId = pickSite(map, e.point, pickLayers)?.properties?.site_id;
 
       if (typeof siteId === "string") {
         onSelectSite(siteId);
@@ -767,7 +880,7 @@ export function MapInteractions({
 
     const handleMove = (e: MapLibreGL.MapMouseEvent) => {
       map.getCanvas().style.cursor =
-        facilityAt(e.point) !== null || pickSiteDot(map, e.point, pickLayers)
+        facilityAt(e.point) !== null || pickSite(map, e.point, pickLayers)
           ? "pointer"
           : "crosshair";
     };
@@ -852,14 +965,24 @@ function geodesicCircle(
   };
 }
 
+/**
+ * The search radius, as a faint fill and a dashed ring.
+ *
+ * `part` splits the two so they can sit at different heights: the fill goes
+ * under the result tiles (so it does not tint them), the ring over them (so the
+ * result tiles at the edge of the radius cannot hide it). Drawn as one piece
+ * when the map shows dots, where nothing needs to come between them.
+ */
 export function SearchRadiusLayer({
   centre,
   radiusM,
   theme,
+  part = "both",
 }: {
   centre: { lat: number; lon: number } | null;
   radiusM: number;
   theme: Theme;
+  part?: "both" | "fill" | "line";
 }) {
   const data = useMemo<FeatureCollection | null>(() => {
     if (!centre || !Number.isFinite(radiusM) || radiusM <= 0) return null;
@@ -871,25 +994,24 @@ export function SearchRadiusLayer({
 
   const layers = useMemo(() => {
     const tint = theme === "dark" ? "#8b9cf5" : "#4c5fd7";
-    return [
-      {
-        id: "search-radius-fill",
-        type: "fill" as const,
-        paint: { "fill-color": tint, "fill-opacity": 0.1 },
+    const fill = {
+      id: "search-radius-fill",
+      type: "fill" as const,
+      paint: { "fill-color": tint, "fill-opacity": 0.1 },
+    };
+    const line = {
+      id: "search-radius-line",
+      type: "line" as const,
+      paint: {
+        "line-color": tint,
+        "line-width": 1.8,
+        "line-opacity": 0.85,
+        "line-dasharray": [2, 1.5],
       },
-      {
-        id: "search-radius-line",
-        type: "line" as const,
-        paint: {
-          "line-color": tint,
-          "line-width": 1.8,
-          "line-opacity": 0.85,
-          "line-dasharray": [2, 1.5],
-        },
-      },
-    ];
-  }, [theme]);
+    };
+    return part === "fill" ? [fill] : part === "line" ? [line] : [fill, line];
+  }, [theme, part]);
 
-  useMapSource("search-radius", data, layers);
+  useMapSource(part === "line" ? "search-radius-ring" : "search-radius", data, layers);
   return null;
 }

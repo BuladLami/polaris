@@ -8,9 +8,14 @@
  * should not be recommended at all.
  */
 
+/**
+ * The four classes. The second was called "Moderately Suitable" until the
+ * post-defense revision; `lib/dataset.ts` still maps that old label on load,
+ * so an export from before the rename keeps working.
+ */
 export type SuitabilityClass =
   | "Highly Suitable"
-  | "Moderately Suitable"
+  | "Suitable"
   | "Low Suitability"
   | "Not Suitable";
 

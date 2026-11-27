@@ -91,7 +91,7 @@ const SCORE_GUIDE =
   "hazard penalties (flood, landslide, and storm surge susceptibility). " +
   "Scores closer to 1 indicate HIGHER overall suitability; scores closer to " +
   "0 indicate LOWER suitability. Classification thresholds: below 0.25 = Not " +
-  "Suitable; 0.25-0.40 = Low Suitability; 0.40-0.60 = Moderately Suitable; " +
+  "Suitable; 0.25 to below 0.40 = Low Suitability; 0.40 to below 0.60 = Suitable; " +
   "0.60 and above = Highly Suitable. Individual factor values follow the " +
   "same 0-to-1 direction: for example, a road-accessibility value near zero " +
   "(such as 0.007) means the site is far from the road network and has LOW " +
@@ -298,7 +298,7 @@ function interpretSite(site, normalized, hazards, shorelineExcluded) {
 
 function classifySuitability(score) {
   if (score >= TAU3) return "Highly Suitable";
-  if (score >= TAU2) return "Moderately Suitable";
+  if (score >= TAU2) return "Suitable";
   if (score >= TAU1) return "Low Suitability";
   return "Not Suitable";
 }
@@ -465,7 +465,7 @@ async function main() {
   const CLASS_BASE_LEVEL = {
     "Not Suitable": 0,
     "Low Suitability": 1,
-    "Moderately Suitable": 2,
+    Suitable: 2,
     "Highly Suitable": 3,
   };
   const highly = records.filter((r) => r.suitability_class === "Highly Suitable");

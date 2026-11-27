@@ -12,6 +12,7 @@ import {
 import { SuitabilityBadge } from "@/components/ScoreDisplay";
 import { MAX_TOP_N, MIN_TOP_N } from "@/lib/search";
 import {
+  BUILDING_DENSITY_NOTE,
   classRange,
   DEFAULT_THRESHOLDS,
   scoreGuidePoints,
@@ -143,6 +144,8 @@ export function ScoreGuideBody({
         </section>
       )}
 
+      <Callout title="Buildings, not people">{BUILDING_DENSITY_NOTE}</Callout>
+
       <Callout title="What a value like 0.007 is telling you">
         The smaller values listed under each site work the same way as the main
         score: closer to 1 is good, closer to 0 is bad. For road access in
@@ -159,7 +162,7 @@ export function ScoreGuideBody({
 const CLASS_MEANING: Record<string, string> = {
   "Highly Suitable":
     "A strong choice — plenty of people nearby, easy to reach, far from the health facilities that already exist, and low risk.",
-  "Moderately Suitable":
+  Suitable:
     "Usable, but something about it is weak. Compare it with the better-rated spots before you decide.",
   "Low Suitability":
     "Weak in several ways, or fairly risky. Only choose this if you have no option outside the area.",

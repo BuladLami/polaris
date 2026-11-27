@@ -338,6 +338,7 @@ export default function App() {
               boundary={bundle.boundary}
               coastline={bundle.coastline}
               facilities={bundle.facilities}
+              tiles={bundle.tiles}
               shorelineBufferM={bufferM}
               showShorelineBuffer={showShorelineBuffer}
               showAllSites={showAllSites}
@@ -362,6 +363,7 @@ export default function App() {
               facilityCount={facilityCount}
               siteCount={sites.length}
               excludedCount={excludedCount}
+              tiles={bundle.tiles !== null}
             />
           </div>
 

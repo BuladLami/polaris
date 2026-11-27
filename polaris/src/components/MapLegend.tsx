@@ -7,6 +7,7 @@ import {
   classRange,
   DEFAULT_THRESHOLDS,
   SUITABILITY_CLASSES,
+  TILE_NOTE,
   type Thresholds,
 } from "@/lib/suitability";
 import { mapKeyStartsOpen } from "@/lib/map-view";
@@ -30,7 +31,10 @@ export function MapLegend({
   facilityCount,
   siteCount,
   excludedCount,
+  tiles = false,
 }: {
+  /** True when sites are drawn as tiles: the swatches are squares to match. */
+  tiles?: boolean;
   thresholds?: Thresholds;
   shorelineBufferM: number;
   showShorelineBuffer: boolean;
@@ -45,6 +49,9 @@ export function MapLegend({
   excludedCount: number;
 }) {
   const [open, setOpen] = useState(mapKeyStartsOpen);
+  // Square swatches for tiles, round ones for the dot fallback — the key
+  // draws each site the way the map does.
+  const swatchShape = tiles ? "rounded-[2px]" : "rounded-full";
 
   return (
     <div className="pointer-events-none absolute bottom-4 left-4 z-10 max-w-[min(24rem,calc(100%-2rem))]">
@@ -85,7 +92,8 @@ export function MapLegend({
                     >
                       <span className="flex min-w-0 items-center gap-2">
                         <span
-                          className="size-2.5 shrink-0 rounded-full"
+                          data-legend-swatch
+                          className={cn("size-2.5 shrink-0", swatchShape)}
                           style={{
                             backgroundColor: `var(${CLASS_COLOR_VAR[cls]})`,
                           }}
@@ -98,7 +106,9 @@ export function MapLegend({
                     </li>
                   ))}
                   <li className="flex items-center gap-2 text-sm">
-                    <span className="bg-suit-excluded size-2.5 shrink-0 rounded-full" />
+                    <span
+                      className={cn("bg-suit-excluded size-2.5 shrink-0", swatchShape)}
+                    />
                     <span className="text-muted-foreground truncate">
                       Ruled out — within {shorelineBufferM} m of the shoreline
                     </span>
@@ -113,6 +123,14 @@ export function MapLegend({
                     </li>
                   )}
                 </ul>
+                {tiles && (
+                  <p
+                    data-tile-note
+                    className="text-muted-foreground mt-2 text-xs leading-relaxed"
+                  >
+                    {TILE_NOTE}
+                  </p>
+                )}
               </div>
 
               <p className="text-muted-foreground border-t pt-3 text-xs leading-relaxed">

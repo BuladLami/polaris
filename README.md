@@ -66,7 +66,7 @@ polaris/
     ├── App.tsx                   # orchestration, load-once state
     ├── components/
     │   ├── ui/                   # shadcn primitives + vendored mapcn map.tsx
-    │   ├── map/                  # site dots, shoreline band, boundary, search radius
+    │   ├── map/                  # site tiles, shoreline band, boundary, search radius
     │   └── *.tsx                 # panels and dialogs
     ├── lib/                      # dataset loader, geometry, scoring vocabulary
     └── types/polaris.ts          # dataset schema
@@ -113,10 +113,18 @@ Every site gets **one** number between 0 and 1. **Closer to 1 is more suitable.*
 
 | Class | Composite score |
 |---|---|
-| Highly Suitable | ≥ 0.60 |
-| Moderately Suitable | 0.40 – 0.60 |
-| Low Suitability | 0.25 – 0.40 |
-| Not Suitable | < 0.25 |
+| Highly Suitable | 0.60 and above |
+| Suitable | 0.40 to below 0.60 |
+| Low Suitability | 0.25 to below 0.40 |
+| Not Suitable | below 0.25 |
+
+Each class starts at its threshold, so a score of exactly 0.25, 0.40 or 0.60
+belongs to the class above. ("Suitable" was called "Moderately Suitable" before
+the post-defense revision; only the label changed.)
+
+On the map each site is drawn as the 250 m grid cell it stands for
+(`public/data/talomo_site_tiles.json`, built by `npm run data:tiles`). The tile
+file holds geometry and `site_id` only; the app colours each tile from its site.
 
 Individual factor values run in the same direction. Road accessibility is a
 normalized *inverse* distance to the road network, so **0.007 means the site is

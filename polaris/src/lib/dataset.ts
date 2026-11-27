@@ -2,7 +2,8 @@ import type { FeatureCollection } from "geojson";
 
 import { indexFacilities, type FacilityCollection } from "@/lib/facilities";
 import { isInsideGeometry } from "@/lib/geo";
-import type { PolarisDataset } from "@/types/polaris";
+import { RETIRED_CLASS_LABELS } from "@/lib/suitability";
+import type { PolarisDataset, SuitabilityClass } from "@/types/polaris";
 
 /**
  * Static, load-once data access.
@@ -24,6 +25,12 @@ export interface PolarisBundle {
    * stamped with `fid` and `has_details` (see `indexFacilities`).
    */
   facilities: FacilityCollection | null;
+  /**
+   * One 250 m square per candidate site, carrying only `site_id`; the class
+   * colour is joined from `dataset.sites` at render time. Null when the file
+   * is missing, in which case the map falls back to dots.
+   */
+  tiles: FeatureCollection | null;
   /** Barangay names that actually contain at least one scored site. */
   barangays: BarangayEntry[];
   loadedAt: Date;
@@ -144,29 +151,62 @@ function facilitiesWithinBoundary(
   return { ...facilities, features: kept };
 }
 
+/**
+ * Maps a class label retired by the post-defense revision ("Moderately
+ * Suitable") to its current name ("Suitable"), so a pipeline export from
+ * before the rename still renders. Only the label string is touched, and an
+ * export already using the new labels passes through unchanged.
+ */
+export function normalizeClassLabels(dataset: PolarisDataset): PolarisDataset {
+  const current = (cls: string) =>
+    (RETIRED_CLASS_LABELS[cls] ?? cls) as SuitabilityClass;
+
+  const needsMapping =
+    dataset.sites.some((s) => s.suitability_class in RETIRED_CLASS_LABELS) ||
+    (dataset.top_recommendations ?? []).some(
+      (r) => r.suitability_class in RETIRED_CLASS_LABELS,
+    );
+  if (!needsMapping) return dataset;
+
+  return {
+    ...dataset,
+    sites: dataset.sites.map((s) => ({
+      ...s,
+      suitability_class: current(s.suitability_class),
+    })),
+    top_recommendations: (dataset.top_recommendations ?? []).map((r) => ({
+      ...r,
+      suitability_class: current(r.suitability_class),
+    })),
+  };
+}
+
 async function fetchBundle(force: boolean): Promise<PolarisBundle> {
   const cacheBust = force ? `?t=${Date.now()}` : "";
 
-  const [dataset, boundary, coastline, facilities] = await Promise.all([
+  const [raw, boundary, coastline, facilities, tiles] = await Promise.all([
     getJson<PolarisDataset>("candidate_sites.json", cacheBust),
     getOptionalJson<FeatureCollection>("talomo_boundary.json", cacheBust),
     getOptionalJson<FeatureCollection>("talomo_coastline.json", cacheBust),
     getOptionalJson<FeatureCollection>("talomo_facilities.json", cacheBust),
+    getOptionalJson<FeatureCollection>("talomo_site_tiles.json", cacheBust),
   ]);
 
-  if (!Array.isArray(dataset?.sites)) {
+  if (!Array.isArray(raw?.sites)) {
     throw new Error(
       "candidate_sites.json is not in the expected format. Expected an object " +
         "with `metadata`, `top_recommendations` and `sites`. Run " +
         "`npm run data:migrate`, or export a fresh file from the training pipeline.",
     );
   }
+  const dataset = normalizeClassLabels(raw);
 
   return {
     dataset,
     boundary,
     coastline,
     facilities: indexFacilities(facilitiesWithinBoundary(facilities, boundary)),
+    tiles,
     barangays: deriveBarangays(dataset),
     loadedAt: new Date(),
   };

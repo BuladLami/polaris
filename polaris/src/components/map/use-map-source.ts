@@ -3,6 +3,9 @@ import type MapLibreGL from "maplibre-gl";
 import type { GeoJSON } from "geojson";
 
 import { useMap } from "@/components/ui/map";
+import { beforeIdFor } from "@/components/map/layer-order";
+
+export { LAYER_ORDER, beforeIdFor } from "@/components/map/layer-order";
 
 /** `Omit` that distributes across a union, preserving per-layer paint typing. */
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
@@ -66,10 +69,10 @@ export function useMapSource(
 
         for (const layer of layersRef.current) {
           if (!map.getLayer(layer.id)) {
-            map.addLayer({
-              ...layer,
-              source: sourceId,
-            } as MapLibreGL.AddLayerObject);
+            map.addLayer(
+              { ...layer, source: sourceId } as MapLibreGL.AddLayerObject,
+              beforeIdFor(layer.id, (id) => Boolean(map.getLayer(id))),
+            );
           }
         }
       } catch {

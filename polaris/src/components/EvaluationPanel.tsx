@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { CompositeScore, RecommendationLevel } from "@/components/ScoreDisplay";
 import { EmptyState } from "@/components/RecommendationsPanel";
 import {
+  BUILDING_DENSITY_NOTE,
   formatMetres,
   ineligibilityReason,
   shorelineBufferOf,
@@ -75,6 +76,13 @@ export function EvaluationPanel({
           What this means
         </h3>
         <p className="text-sm leading-relaxed">{site.interpretation}</p>
+        {/* The interpretation quotes the building count; this says what it counts. */}
+        <p
+          data-factor-note
+          className="text-muted-foreground border-primary/40 mt-2 border-l-2 pl-2 text-xs leading-relaxed italic"
+        >
+          {BUILDING_DENSITY_NOTE}
+        </p>
       </section>
 
       {!site.recommendation_eligible && reason && (

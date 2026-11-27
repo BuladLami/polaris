@@ -52,15 +52,24 @@ export function buildingRadiusOf(metadata: DatasetMetadata | null): number {
 
 export const SUITABILITY_CLASSES: SuitabilityClass[] = [
   "Highly Suitable",
-  "Moderately Suitable",
+  "Suitable",
   "Low Suitability",
   "Not Suitable",
 ];
 
+/**
+ * The label the second class carried before the post-defense revision. Kept
+ * only so an older export can be mapped on load; never displayed.
+ */
+export const RETIRED_CLASS_LABELS: Record<string, SuitabilityClass> = {
+  "Moderately Suitable": "Suitable",
+};
+
 /** CSS custom property per class — shared by badges, the legend and the map. */
 export const CLASS_COLOR_VAR: Record<SuitabilityClass, string> = {
   "Highly Suitable": "--suit-high",
-  "Moderately Suitable": "--suit-moderate",
+  // The token keeps its old name; only the label changed.
+  Suitable: "--suit-moderate",
   "Low Suitability": "--suit-low",
   "Not Suitable": "--suit-none",
 };
@@ -75,7 +84,7 @@ export const CLASS_HEX: Record<
   { light: string; dark: string }
 > = {
   "Highly Suitable": { light: "#1f9d55", dark: "#34d17f" },
-  "Moderately Suitable": { light: "#2f86d4", dark: "#4fa8e8" },
+  Suitable: { light: "#2f86d4", dark: "#4fa8e8" },
   "Low Suitability": { light: "#d99413", dark: "#f0b429" },
   "Not Suitable": { light: "#d64545", dark: "#f06a6a" },
 };
@@ -90,6 +99,11 @@ export const EXCLUDED_HEX = { light: "#94a3b8", dark: "#64748b" };
  */
 export const FACILITY_HEX = { light: "#7c3aed", dark: "#a78bfa" };
 
+/**
+ * The score range of a class, in words. Each class starts AT its threshold and
+ * stops just below the next one, so the wording says "to below" rather than
+ * using a dash that reads as if both ends were included.
+ */
 export function classRange(
   cls: SuitabilityClass,
   t = DEFAULT_THRESHOLDS,
@@ -97,14 +111,41 @@ export function classRange(
   switch (cls) {
     case "Highly Suitable":
       return `${t.tau3.toFixed(2)} and above`;
-    case "Moderately Suitable":
-      return `${t.tau2.toFixed(2)} – ${t.tau3.toFixed(2)}`;
+    case "Suitable":
+      return `${t.tau2.toFixed(2)} to below ${t.tau3.toFixed(2)}`;
     case "Low Suitability":
-      return `${t.tau1.toFixed(2)} – ${t.tau2.toFixed(2)}`;
+      return `${t.tau1.toFixed(2)} to below ${t.tau2.toFixed(2)}`;
     case "Not Suitable":
       return `below ${t.tau1.toFixed(2)}`;
   }
 }
+
+/**
+ * The class a score falls in. Mirrors the pipeline's `f14_classify` exactly:
+ * strict `<` against each threshold, so a score of exactly 0.25, 0.40 or 0.60
+ * belongs to the class above it (τ ≤ ŷ < next τ).
+ *
+ * The app does not reclassify sites — every site carries the class the
+ * pipeline gave it. This exists so the boundary rule the ranges above describe
+ * is pinned down by a test against the same thresholds.
+ */
+export function classifyScore(
+  score: number,
+  t = DEFAULT_THRESHOLDS,
+): SuitabilityClass {
+  if (score < t.tau1) return "Not Suitable";
+  if (score < t.tau2) return "Low Suitability";
+  if (score < t.tau3) return "Suitable";
+  return "Highly Suitable";
+}
+
+/** Building density counts buildings, not people (panel, post-defense). */
+export const BUILDING_DENSITY_NOTE =
+  "Building density counts buildings, not people. A tall condominium counts as one building, the same as a house.";
+
+/** One-line note under the map key's tile swatches (panel, post-defense). */
+export const TILE_NOTE =
+  "Each tile is the area a site stands for. A facility can be placed anywhere suitable inside it, after checking the actual site.";
 
 /* ------------------------------------------------------------------ */
 /*  Eligibility                                                        */

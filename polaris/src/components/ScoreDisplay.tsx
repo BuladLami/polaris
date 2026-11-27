@@ -147,12 +147,15 @@ export function FactorRow({
   raw,
   hint,
   reading,
+  note,
 }: {
   label: string;
   normalized: number;
   raw?: string;
   hint?: string;
   reading?: string;
+  /** A standing caveat about what the factor measures, shown under the reading. */
+  note?: string;
 }) {
   const pct = Math.max(0, Math.min(1, normalized)) * 100;
 
@@ -193,6 +196,14 @@ export function FactorRow({
 
       {reading && (
         <p className="text-muted-foreground text-xs leading-relaxed">{reading}</p>
+      )}
+      {note && (
+        <p
+          data-factor-note
+          className="text-muted-foreground border-primary/40 border-l-2 pl-2 text-xs leading-relaxed italic"
+        >
+          {note}
+        </p>
       )}
     </div>
   );

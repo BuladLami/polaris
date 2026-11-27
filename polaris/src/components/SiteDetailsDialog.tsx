@@ -16,6 +16,7 @@ import {
   RecommendationLevel,
 } from "@/components/ScoreDisplay";
 import {
+  BUILDING_DENSITY_NOTE,
   buildingRadiusOf,
   describeRoadAccessibility,
   formatMetres,
@@ -162,6 +163,7 @@ export function SiteDetailsDialog({
                     reading={
                       ranks && BUILT_UP_READING[ranks.building_density.band]
                     }
+                    note={BUILDING_DENSITY_NOTE}
                   />
                   <FactorRow
                     label={SERVICE_FACTOR_LABEL.road_accessibility}

@@ -17,11 +17,14 @@ import {
   FacilityHover,
   MapInteractions,
   ResultDotsLayer,
+  ResultTilesLayer,
   SearchRadiusLayer,
   ShorelineBufferLayer,
   SiteDotsLayer,
   SiteHover,
+  SiteTilesLayer,
   sitesToFeatureCollection,
+  tilesToFeatureCollection,
 } from "@/components/map/layers";
 import type { Theme } from "@/hooks/use-theme";
 import type { FacilityCollection } from "@/lib/facilities";
@@ -45,6 +48,8 @@ export interface SuitabilityMapProps {
   boundary: FeatureCollection | null;
   coastline: FeatureCollection | null;
   facilities: FacilityCollection | null;
+  /** The 250 m cell of every site; null falls back to drawing sites as dots. */
+  tiles: FeatureCollection | null;
   shorelineBufferM: number;
   showShorelineBuffer: boolean;
   showAllSites: boolean;
@@ -70,6 +75,7 @@ export function SuitabilityMap({
   boundary,
   coastline,
   facilities,
+  tiles,
   shorelineBufferM,
   showShorelineBuffer,
   showAllSites,
@@ -82,17 +88,38 @@ export function SuitabilityMap({
   onPickLocation,
   className,
 }: SuitabilityMapProps) {
+  const useTiles = tiles !== null;
+
+  // Tiles when the tile file loaded, dots otherwise. Exactly one of each pair
+  // is non-null, so only one rendering is ever on the map.
+  const allSiteTiles = useMemo(
+    () =>
+      useTiles && showAllSites
+        ? tilesToFeatureCollection(tiles, sites, shorelineBufferM)
+        : null,
+    [useTiles, tiles, sites, shorelineBufferM, showAllSites],
+  );
   const allSitesGeoJson = useMemo(
-    () => (showAllSites ? sitesToFeatureCollection(sites, shorelineBufferM) : null),
-    [sites, shorelineBufferM, showAllSites],
+    () =>
+      !useTiles && showAllSites
+        ? sitesToFeatureCollection(sites, shorelineBufferM)
+        : null,
+    [useTiles, sites, shorelineBufferM, showAllSites],
   );
 
+  const resultTiles = useMemo(
+    () =>
+      useTiles && resultSites.length
+        ? tilesToFeatureCollection(tiles, resultSites, shorelineBufferM)
+        : null,
+    [useTiles, tiles, resultSites, shorelineBufferM],
+  );
   const resultGeoJson = useMemo(
     () =>
-      resultSites.length
+      !useTiles && resultSites.length
         ? sitesToFeatureCollection(resultSites, shorelineBufferM)
         : null,
-    [resultSites, shorelineBufferM],
+    [useTiles, resultSites, shorelineBufferM],
   );
 
   /**
@@ -111,8 +138,12 @@ export function SuitabilityMap({
    */
   const pickLayers = useMemo(() => {
     if (mode !== "recommendation") return [];
-    return showAllSites ? ["result-dots", "site-dots"] : ["result-dots"];
-  }, [mode, showAllSites]);
+    const results = useTiles ? "result-tiles" : "result-dots";
+    const all = useTiles ? "site-tiles" : "site-dots";
+    return showAllSites ? [results, all] : [results];
+  }, [mode, showAllSites, useTiles]);
+
+  const radiusCentre = mode === "recommendation" ? searchCentre : null;
 
   return (
     <Map
@@ -134,13 +165,31 @@ export function SuitabilityMap({
         onPickLocation={onPickLocation}
       />
 
-      {/* Draw order is mount order: context first, then the data on top. */}
+      {/* Stacking is fixed by LAYER_ORDER in use-map-source.ts, not by mount
+          order, so it holds whichever layer the user switches on first. Only
+          one of each tiles/dots pair has data, so only one is ever drawn. */}
+      <SiteTilesLayer
+        data={allSiteTiles}
+        theme={theme}
+        dimmed={resultSites.length > 0}
+      />
       <BoundaryLayer data={boundary} theme={theme} />
+      {/* The search area's fill sits under the result tiles so it does not
+          tint them; its ring sits over them so edge tiles cannot hide it. */}
       <SearchRadiusLayer
-        centre={mode === "recommendation" ? searchCentre : null}
+        centre={radiusCentre}
         radiusM={searchRadiusM}
         theme={theme}
+        part="fill"
       />
+      <ResultTilesLayer data={resultTiles} theme={theme} />
+      <SearchRadiusLayer
+        centre={radiusCentre}
+        radiusM={searchRadiusM}
+        theme={theme}
+        part="line"
+      />
+      {/* The 50 m setback is a hard gate and must stay visible over tiles. */}
       <ShorelineBufferLayer
         data={coastline}
         bufferM={shorelineBufferM}
@@ -152,8 +201,8 @@ export function SuitabilityMap({
         theme={theme}
         dimmed={resultSites.length > 0}
       />
-      {/* Above the district-wide dot cloud so it stays readable over it, but
-          below the numbered recommendations, which must never be obscured. */}
+      {/* Above the site layers so existing facilities stay readable over them,
+          but below the numbered recommendations, which must never be obscured. */}
       <FacilitiesLayer
         data={facilities}
         theme={theme}
