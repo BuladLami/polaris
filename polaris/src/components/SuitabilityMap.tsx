@@ -125,25 +125,6 @@ export function SuitabilityMap({
       : null;
   }, [tiles, sites, hoveredSiteId, highlightSiteId, shorelineBufferM]);
 
-  /**
-   * Which dots open the details dialog on click.
-   *
-   * The emphasised result dots always do. The district-wide layer joins them
-   * only while its legend toggle is on — that toggle is therefore also the
-   * escape hatch, because a pickable dot cannot double as open map: with the
-   * layer showing, a click that lands on a dot opens that site instead of
-   * placing the search centre. (Coordinates can still be typed into the search
-   * panel, which is the precise path regardless.)
-   *
-   * Evaluation mode opts out entirely — clicking *is* the mode's verb there,
-   * and a click on a dot already evaluates that same site, so the breakdown
-   * arrives in the panel without a dialog intercepting the gesture.
-   */
-  const pickLayers = useMemo(() => {
-    if (mode !== "recommendation") return [];
-    return showAllSites ? ["result-dots", "site-dots"] : ["result-dots"];
-  }, [mode, showAllSites]);
-
   return (
     <Map
       ref={mapRef}
@@ -157,9 +138,7 @@ export function SuitabilityMap({
     >
       <DistrictView bounds={districtBounds} />
       <MapInteractions
-        pickLayers={pickLayers}
-        facilityClicks={mode === "recommendation"}
-        onSelectSite={onSelectSite}
+        mode={mode}
         onSelectFacility={onSelectFacility}
         onPickLocation={onPickLocation}
       />
@@ -210,7 +189,6 @@ export function SuitabilityMap({
         sites={sites}
         bufferM={shorelineBufferM}
         theme={theme}
-        pickLayers={pickLayers}
         mode={mode}
         onHoverSite={setHoveredSiteId}
       />

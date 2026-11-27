@@ -20,6 +20,11 @@ import {
 import type { AppMode, Site, SuitabilityClass } from "@/types/polaris";
 import { HAZARD_HEX, type HazardLayerKey } from "@/lib/hazards";
 import {
+  facilityClicksEnabled,
+  resolveMapClick,
+  siteHoverHint,
+} from "@/components/map/map-click";
+import {
   CLASS_HEX,
   EXCLUDED_HEX,
   FACILITY_HEX,
@@ -656,15 +661,13 @@ export function SiteHover({
   sites,
   bufferM,
   theme,
-  pickLayers,
   mode,
   onHoverSite,
 }: {
   sites: readonly Site[];
   bufferM: number;
   theme: Theme;
-  /** Layers whose dots open the details dialog — drives the card's hint line. */
-  pickLayers: readonly string[];
+  /** Drives the card's last line: what a click on the map will do. */
   mode: AppMode;
   /** Told which site the pointer is over (null when none), to show its tile. */
   onHoverSite?: (siteId: string | null) => void;
@@ -722,7 +725,7 @@ export function SiteHover({
         site,
         bufferM,
         theme,
-        clickHint(hit.layer.id, pickLayers, mode),
+        siteHoverHint(mode),
       );
 
       if (popup) {
@@ -753,24 +756,8 @@ export function SiteHover({
       map.off("click", clear);
       clear();
     };
-  }, [map, isLoaded, byId, bufferM, theme, pickLayers, mode]);
+  }, [map, isLoaded, byId, bufferM, theme, mode]);
 
-  return null;
-}
-
-/**
- * What the card promises a click will do — never a guess: it is derived from
- * the very `pickLayers` the click handler consults.
- */
-function clickHint(
-  layerId: string,
-  pickLayers: readonly string[],
-  mode: AppMode,
-): string | null {
-  if (pickLayers.includes(layerId)) return "Click for the full breakdown";
-  // Evaluation mode keeps every click as a pick, and a click on a dot resolves
-  // to that same site — the breakdown lands in the panel instead of a dialog.
-  if (mode === "evaluation") return "Click to evaluate this site";
   return null;
 }
 
@@ -811,25 +798,17 @@ function siteCardHtml(
 }
 
 /**
- * Central click/hover routing. A single map-level handler decides whether a
- * click landed on a selectable site dot or on open map, rather than relying on
- * the relative ordering of MapLibre's layer-filtered and map-level listeners.
- *
- * `pickLayers` is deliberately narrow. The background dot layer covers most of
- * the district, so if it intercepted clicks the user could never place a search
- * centre or evaluate a point — only the emphasised result dots opt in.
+ * Central click routing, by `resolveMapClick` (map-click.ts). Site dots and
+ * tiles never take the click: in Recommend mode it places the search centre,
+ * in Evaluate mode it evaluates the point. Site details open from the result
+ * cards and the numbered markers.
  */
 export function MapInteractions({
-  pickLayers,
-  facilityClicks,
-  onSelectSite,
+  mode,
   onSelectFacility,
   onPickLocation,
 }: {
-  pickLayers: readonly string[];
-  /** False in Evaluate mode, where every click evaluates, as with site dots. */
-  facilityClicks: boolean;
-  onSelectSite: (siteId: string) => void;
+  mode: AppMode;
   onSelectFacility: (fid: number) => void;
   onPickLocation: (lat: number, lon: number) => void;
 }) {
@@ -844,29 +823,16 @@ export function MapInteractions({
      * says. Rings without details fall through, exactly as before.
      */
     const facilityAt = (point: MapLibreGL.Point) =>
-      facilityClicks ? clickableFacilityId(pickFacility(map, point)) : null;
+      facilityClicksEnabled(mode) ? clickableFacilityId(pickFacility(map, point)) : null;
 
     const handleClick = (e: MapLibreGL.MapMouseEvent) => {
-      const fid = facilityAt(e.point);
-      if (fid !== null) {
-        onSelectFacility(fid);
-        return;
-      }
-
-      const siteId = pickSite(map, e.point, pickLayers)?.properties?.site_id;
-
-      if (typeof siteId === "string") {
-        onSelectSite(siteId);
-      } else {
-        onPickLocation(e.lngLat.lat, e.lngLat.lng);
-      }
+      const action = resolveMapClick(mode, facilityAt(e.point));
+      if (action.kind === "facility") onSelectFacility(action.fid);
+      else onPickLocation(e.lngLat.lat, e.lngLat.lng);
     };
 
     const handleMove = (e: MapLibreGL.MapMouseEvent) => {
-      map.getCanvas().style.cursor =
-        facilityAt(e.point) !== null || pickSite(map, e.point, pickLayers)
-          ? "pointer"
-          : "crosshair";
+      map.getCanvas().style.cursor = facilityAt(e.point) !== null ? "pointer" : "crosshair";
     };
 
     map.on("click", handleClick);
@@ -878,7 +844,7 @@ export function MapInteractions({
       map.off("mousemove", handleMove);
       if (map.getCanvas()) map.getCanvas().style.cursor = "";
     };
-  }, [map, isLoaded, pickLayers, facilityClicks, onSelectSite, onSelectFacility, onPickLocation]);
+  }, [map, isLoaded, mode, onSelectFacility, onPickLocation]);
 
   return null;
 }
