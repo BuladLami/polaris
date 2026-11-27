@@ -9,10 +9,19 @@
  * each layer is inserted below the first layer that belongs above it and is
  * already on the map, which gives this order however the layers arrive.
  *
- * A highlighted tile sits under the shoreline band (a hard gate), the dots and
- * the facility rings, so the dot it belongs to stays visible in its middle.
+ * The hazard overlays sit at the bottom, just above the basemap. A highlighted
+ * tile sits above them (semi-transparent, so the hazard shows through) and
+ * under the shoreline band (a hard gate), the dots and the facility rings, so
+ * the dot it belongs to stays visible in its middle.
  */
 export const LAYER_ORDER = [
+  // Project NOAH hazard overlays: just above the basemap, under everything else.
+  "hazard-flood",
+  "hazard-flood-line",
+  "hazard-landslide",
+  "hazard-landslide-line",
+  "hazard-storm_surge",
+  "hazard-storm_surge-line",
   "talomo-boundary-line",
   "talomo-boundary-fill",
   "search-radius-fill",

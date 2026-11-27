@@ -11,6 +11,14 @@ import {
   type Thresholds,
 } from "@/lib/suitability";
 import { mapKeyStartsOpen } from "@/lib/map-view";
+import {
+  HAZARD_CLASS_LABEL,
+  HAZARD_HEX,
+  HAZARD_LAYERS,
+  HAZARD_NOTE,
+  type HazardLayerKey,
+  type HazardToggles,
+} from "@/lib/hazards";
 
 /**
  * Floating map key. Collapsible and bottom-left so it never collides with the
@@ -32,7 +40,12 @@ export function MapLegend({
   siteCount,
   excludedCount,
   tiles = false,
+  hazards,
+  onToggleHazard,
 }: {
+  /** Project NOAH overlays; the section is hidden when not given. */
+  hazards?: HazardToggles;
+  onToggleHazard?: (key: HazardLayerKey) => void;
   /** True when the tile file loaded: shows the tile note. */
   tiles?: boolean;
   thresholds?: Thresholds;
@@ -158,6 +171,36 @@ export function MapLegend({
             />
           )}
         </div>
+
+        {hazards && onToggleHazard && (
+          <div data-hazard-section className="space-y-2 border-t px-4 py-3">
+            <p className="text-muted-foreground text-[11px] font-semibold tracking-wider uppercase">
+              Hazard maps
+            </p>
+            {HAZARD_LAYERS.map((layer) => (
+              <LegendToggle
+                key={layer.key}
+                checked={hazards[layer.key]}
+                onChange={() => onToggleHazard(layer.key)}
+                label={layer.label}
+              />
+            ))}
+            {HAZARD_LAYERS.some((layer) => hazards[layer.key]) && (
+              <ul data-hazard-key className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-xs">
+                {([1, 2, 3] as const).map((c) => (
+                  <li key={c} className="flex items-center gap-1.5">
+                    <span
+                      className="size-2.5 shrink-0 rounded-[2px] opacity-70"
+                      style={{ backgroundColor: HAZARD_HEX[c].light }}
+                    />
+                    {HAZARD_CLASS_LABEL[c]}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="text-muted-foreground text-xs leading-relaxed">{HAZARD_NOTE}</p>
+          </div>
+        )}
       </div>
     </div>
   );

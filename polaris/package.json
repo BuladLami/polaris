@@ -16,7 +16,8 @@
     "data:migrate": "node scripts/migrate-sites.mjs",
     "data:build": "npm run data:geo",
     "data:relabel": "node scripts/relabel-classes.mjs",
-    "data:tiles": "python scripts/build_site_tiles.py"
+    "data:tiles": "python scripts/build_site_tiles.py",
+    "data:hazards": "python scripts/build_hazard_layers.py"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

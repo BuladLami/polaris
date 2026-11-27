@@ -20,6 +20,8 @@ import { usePolarisData } from "@/hooks/use-polaris-data";
 import { useRecommendationSearch } from "@/hooks/use-recommendation-search";
 import { useSiteEvaluation } from "@/hooks/use-site-evaluation";
 import { useTheme } from "@/hooks/use-theme";
+import { useHazardLayers } from "@/hooks/use-hazard-layers";
+import { HAZARD_TOGGLES_OFF, toggleHazard, type HazardToggles } from "@/lib/hazards";
 import { boundsOfFeatures, boundsOfSites } from "@/lib/geo";
 import { framePadding } from "@/lib/map-view";
 import {
@@ -68,6 +70,8 @@ export default function App() {
   // toggle first, since "far from an existing facility" is a scoring factor.
   // Still freely toggleable — this only changes the default.
   const [showFacilities, setShowFacilities] = useState(true);
+  const [hazards, setHazards] = useState<HazardToggles>(HAZARD_TOGGLES_OFF);
+  const hazardData = useHazardLayers(hazards);
 
   /* ---- Dataset-derived ----------------------------------------------- */
   const metadata = bundle?.dataset.metadata ?? null;
@@ -347,6 +351,8 @@ export default function App() {
               showShorelineBuffer={showShorelineBuffer}
               showAllSites={showAllSites}
               showFacilities={showFacilities}
+              hazards={hazards}
+              hazardData={hazardData}
               searchCentre={search.centre}
               searchRadiusM={Number.parseFloat(search.radiusInput) || 0}
               evalPoint={evaluation.point}
@@ -363,6 +369,8 @@ export default function App() {
               showAllSites={showAllSites}
               onToggleAllSites={() => setShowAllSites((v) => !v)}
               showFacilities={showFacilities}
+              hazards={hazards}
+              onToggleHazard={(key) => setHazards((h) => toggleHazard(h, key))}
               onToggleFacilities={() => setShowFacilities((v) => !v)}
               facilityCount={facilityCount}
               siteCount={sites.length}

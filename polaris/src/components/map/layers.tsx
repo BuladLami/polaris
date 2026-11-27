@@ -18,6 +18,7 @@ import {
   type FacilityCollection,
 } from "@/lib/facilities";
 import type { AppMode, Site, SuitabilityClass } from "@/types/polaris";
+import { HAZARD_HEX, type HazardLayerKey } from "@/lib/hazards";
 import {
   CLASS_HEX,
   EXCLUDED_HEX,
@@ -475,6 +476,59 @@ export function SiteDotsLayer({
   );
 
   useMapSource("site-dots-source", data, layers);
+  return null;
+}
+
+/* ================================================================== */
+/*  Project NOAH hazard overlay                                        */
+/* ================================================================== */
+
+/** Map layer ids of one hazard overlay: the fill and its edge. */
+function hazardLayerIds(key: HazardLayerKey): [string, string] {
+  return [`hazard-${key}`, `hazard-${key}-line`];
+}
+
+/**
+ * One Project NOAH hazard map, Low / Moderate / High, as semi-transparent
+ * fills just above the basemap and under everything POLARIS draws (see
+ * LAYER_ORDER), so the dots and a highlighted tile stay readable on top.
+ * Display only, and never hit-tested: a click still goes to the map beneath.
+ */
+export function HazardLayer({
+  layerKey,
+  data,
+  theme,
+}: {
+  layerKey: HazardLayerKey;
+  data: FeatureCollection | null;
+  theme: Theme;
+}) {
+  const layers = useMemo(() => {
+    const color = [
+      "match",
+      ["get", "hazard_class"],
+      3,
+      HAZARD_HEX[3][theme],
+      2,
+      HAZARD_HEX[2][theme],
+      HAZARD_HEX[1][theme],
+    ] as MapLibreGL.ExpressionSpecification;
+    const [fillId, lineId] = hazardLayerIds(layerKey);
+    return [
+      {
+        id: fillId,
+        type: "fill" as const,
+        paint: { "fill-color": color, "fill-opacity": 0.32 },
+      },
+      {
+        id: lineId,
+        type: "line" as const,
+        paint: { "line-color": color, "line-width": 0.6, "line-opacity": 0.7 },
+      },
+    ];
+  }, [layerKey, theme]);
+
+  useMapSource(`hazard-${layerKey}-source`, data, layers);
   return null;
 }
 

@@ -79,6 +79,15 @@ async function getOptionalJson<T>(
 }
 
 /**
+ * One Project NOAH hazard overlay. Fetched the first time its toggle is
+ * switched on rather than with the bundle, because the flood and landslide
+ * files are a few megabytes each. Null when the file is missing.
+ */
+export function loadHazardLayer(file: string): Promise<FeatureCollection | null> {
+  return getOptionalJson<FeatureCollection>(file, "");
+}
+
+/**
  * Derives the barangay list for the search box from the scored sites
  * themselves, so the dropdown can only ever offer a barangay that actually has
  * results. Each entry's coordinate is the centroid of its sites.

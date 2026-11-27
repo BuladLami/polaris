@@ -15,6 +15,7 @@ import {
   DistrictView,
   FacilitiesLayer,
   FacilityHover,
+  HazardLayer,
   HighlightTileLayer,
   MapInteractions,
   ResultDotsLayer,
@@ -26,6 +27,8 @@ import {
   tilesToFeatureCollection,
 } from "@/components/map/layers";
 import type { Theme } from "@/hooks/use-theme";
+import type { HazardData } from "@/hooks/use-hazard-layers";
+import { HAZARD_LAYERS, HAZARD_TOGGLES_OFF, type HazardToggles } from "@/lib/hazards";
 import type { FacilityCollection } from "@/lib/facilities";
 import type { LngLatBounds } from "@/lib/geo";
 import { cn } from "@/lib/utils";
@@ -55,6 +58,10 @@ export interface SuitabilityMapProps {
   showShorelineBuffer: boolean;
   showAllSites: boolean;
   showFacilities: boolean;
+  /** Which Project NOAH overlays are switched on (all off by default). */
+  hazards?: HazardToggles;
+  /** Overlay data fetched so far; a layer draws only when on and loaded. */
+  hazardData?: HazardData;
   searchCentre: { lat: number; lon: number } | null;
   searchRadiusM: number;
   evalPoint: { lat: number; lon: number } | null;
@@ -82,6 +89,8 @@ export function SuitabilityMap({
   showShorelineBuffer,
   showAllSites,
   showFacilities,
+  hazards = HAZARD_TOGGLES_OFF,
+  hazardData = {},
   searchCentre,
   searchRadiusM,
   evalPoint,
@@ -163,6 +172,14 @@ export function SuitabilityMap({
         radiusM={searchRadiusM}
         theme={theme}
       />
+      {HAZARD_LAYERS.map((layer) => (
+        <HazardLayer
+          key={layer.key}
+          layerKey={layer.key}
+          data={hazards[layer.key] ? (hazardData[layer.key] ?? null) : null}
+          theme={theme}
+        />
+      ))}
       <HighlightTileLayer data={highlightTiles} theme={theme} />
       <ShorelineBufferLayer
         data={coastline}
